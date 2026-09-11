@@ -1,0 +1,14 @@
+[theme]
+base = "dark"
+primaryColor = "#8B5CF6"
+backgroundColor = "#07111F"
+secondaryBackgroundColor = "#101C2E"
+textColor = "#F1F5F9"
+linkColor = "#67E8F9"
+baseRadius = "0.75rem"
+buttonRadius = "full"
+showWidgetBorder = true
+chartCategoricalColors = ["#8B5CF6", "#22D3EE", "#F472B6", "#FBBF24", "#34D399"]
+
+[browser]
+gatherUsageStats = false

@@ -12,14 +12,14 @@ arrays, eigenstate ordering, and diagnostics explicit before numerical code depe
 
 **Acceptance criteria:**
 
-- [ ] `SimulationConfig`, experiment identifiers, result data, and diagnostics have stable typed contracts.
-- [ ] Invalid domains, grid sizes, state counts, and non-finite parameters are rejected clearly.
-- [ ] Dimensionless units (`hbar = m = 1`) and Dirichlet-boundary conventions are documented and tested.
+- [x] `SimulationConfig`, experiment identifiers, result data, and diagnostics have stable typed contracts.
+- [x] Invalid domains, grid sizes, state counts, and non-finite parameters are rejected clearly.
+- [x] Dimensionless units (`hbar = m = 1`) and Dirichlet-boundary conventions are documented and tested.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_models.py`
-- [ ] Full quality suite passes.
+- [x] Focused tests: `uv run pytest tests/test_models.py`
+- [x] Full quality suite passes.
 
 **Dependencies:** None
 

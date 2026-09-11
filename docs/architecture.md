@@ -76,7 +76,19 @@ def solve(config: SimulationConfig) -> SimulationResult:
     """Return ordered, normalized low-energy states and diagnostics."""
 ```
 
-- Configuration uses canonical parameter pairs and is safe to cache.
+- The unit convention is dimensionless with `hbar = m = 1`, so the kinetic operator is
+  `-0.5 d²/dx²`.
+- `grid_points` counts both endpoints. Homogeneous Dirichlet boundaries set the wavefunction to
+  zero at those endpoints; only the `grid_points - 2` interior values enter the Hamiltonian.
+- Domains are finite and strictly increasing. A configuration has at least four total grid points,
+  at least one requested eigenstate, and fewer eigenstates than interior points.
+- Parameters have unique, trimmed names and finite real values. They are sorted into canonical
+  immutable pairs, making `SimulationConfig` stable and safe to cache.
+- `SimulationResult` owns read-only `float64` copies of every numerical array. Grid and potential
+  arrays have shape `(grid_points,)`, energies have shape `(eigenstate_count,)`, and wavefunctions
+  are state-major with shape `(eigenstate_count, grid_points)`.
+- Results enforce a uniform increasing grid, configured endpoints, ascending energies, Dirichlet
+  endpoint values, matching diagnostic shapes, and a finite non-negative solve time.
 - Numerical arrays are returned in `SimulationResult`; plots are built separately.
 - Potentials are pure callables mapping a grid and validated parameters to `V(x)`.
 - Presets and a future composer must feed the same solver path.

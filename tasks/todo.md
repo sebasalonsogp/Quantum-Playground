@@ -83,14 +83,20 @@ checks so the first milestone demonstrates scientific credibility rather than on
 
 **Acceptance criteria:**
 
-- [ ] The lowest states meet documented residual, normalization, and orthogonality tolerances.
-- [ ] Numerical energies match the analytic infinite-well values within a stated tolerance.
-- [ ] Refining the grid decreases error at the expected second-order trend over tested resolutions.
+- [x] The lowest states meet documented residual, normalization, and orthogonality tolerances.
+- [x] Numerical energies match the analytic infinite-well values within a stated tolerance.
+- [x] Refining the grid decreases error at the expected second-order trend over tested resolutions.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_validation.py`
-- [ ] Full suite and package build: `uv run pytest` and `uv build`
+- [x] Focused tests: `uv run pytest tests/test_validation.py`
+- [x] Full suite and package build: `uv run pytest` and `uv build`
+
+**Recorded evidence (2026-09-11):** The default six-state solve had a maximum relative energy
+error of `4.63e-5`, relative residual of `3.85e-10`, normalization error of `4.44e-16`, and
+orthogonality error of `6.49e-15`. Ground-state refinement over 201, 401, and 801 points produced
+relative errors of `2.06e-5`, `5.14e-6`, and `1.29e-6`, with observed orders `1.99999` and
+`2.00000`.
 
 **Dependencies:** Task 3
 
@@ -100,9 +106,9 @@ checks so the first milestone demonstrates scientific credibility rather than on
 
 ### Checkpoint A: Scientific kernel
 
-- [ ] All Phase 1 tests and quality checks pass.
+- [x] All Phase 1 tests and quality checks pass.
 - [x] Default solve timing is recorded and assessed against the roughly 250 ms target.
-- [ ] Analytic and convergence evidence is reviewed before interface expansion.
+- [x] Analytic and convergence evidence is reviewed before interface expansion.
 
 ## Phase 2: First complete recruiter-facing slice
 

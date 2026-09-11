@@ -113,6 +113,24 @@ SimulationResult
 Plotly figure  numerical details
 ```
 
+## Validation boundary
+
+The infinite square well is the numerical oracle for the first milestone. In dimensionless units,
+its exact energies are `E_n = pi^2 n^2 / (2 L^2)`, where `L` is the well width and `n` begins at
+one. A default result is trustworthy only when all of these checks pass:
+
+| Check | MVP tolerance |
+|---|---:|
+| Maximum relative energy error | `1e-4` |
+| Maximum relative residual | `1e-8` |
+| Maximum normalization error | `1e-12` |
+| Maximum orthogonality error | `1e-12` |
+
+Convergence evidence compares matching solutions in coarse-to-fine order. Relative energy errors
+must decrease, and every adjacent-grid observed order must be within `0.1` of the second-order
+target. These are transparent acceptance gates, not solver inputs; future experiments can add their
+own analytic criteria without changing the shared numerical path.
+
 ## Streamlit boundary
 
 `app.py` owns page configuration, controls, session state, cached solver calls, explanations,
@@ -181,4 +199,6 @@ Never:
 - [Streamlit Components v2](https://docs.streamlit.io/develop/concepts/custom-components/components-v2)
 - [Plotly animations](https://plotly.com/python/animations/)
 - [SciPy sparse eigensolver](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigsh.html)
+- [MIT infinite-square-well derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2016/resources/mit8_04s16_lecnotes11/)
+- [MIT centered second-difference derivation](https://math.mit.edu/icg/resources/teaching/18.085-spring2015/SecondOrder.pdf)
 - [uv projects](https://docs.astral.sh/uv/concepts/projects/)

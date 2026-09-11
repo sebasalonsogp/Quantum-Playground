@@ -57,14 +57,18 @@ eigenpairs, order them, normalize eigenstates on the grid, and return the shared
 
 **Acceptance criteria:**
 
-- [ ] The Hamiltonian is real, symmetric, sparse, and applies Dirichlet boundaries consistently.
-- [ ] Requested low-energy eigenpairs are ordered and wavefunctions are normalized numerically.
-- [ ] Invalid or failed solves produce explicit errors rather than partial results.
+- [x] The Hamiltonian is real, symmetric, sparse, and applies Dirichlet boundaries consistently.
+- [x] Requested low-energy eigenpairs are ordered and wavefunctions are normalized numerically.
+- [x] Invalid or failed solves produce explicit errors rather than partial results.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_solver.py`
-- [ ] Manual check: time the default infinite-well solve and record the result.
+- [x] Focused tests: `uv run pytest tests/test_solver.py`
+- [x] Manual check: time the default infinite-well solve and record the result.
+
+**Recorded timing (2026-09-11):** Five local Windows runs with CPython 3.12 and SciPy 1.18.1
+completed the default 801-point, six-state solve in 194.30–201.05 ms (195.07 ms median). The
+largest relative residual in the final run was `3.85e-10`.
 
 **Dependencies:** Tasks 1-2
 
@@ -97,7 +101,7 @@ checks so the first milestone demonstrates scientific credibility rather than on
 ### Checkpoint A: Scientific kernel
 
 - [ ] All Phase 1 tests and quality checks pass.
-- [ ] Default solve timing is recorded and assessed against the roughly 250 ms target.
+- [x] Default solve timing is recorded and assessed against the roughly 250 ms target.
 - [ ] Analytic and convergence evidence is reviewed before interface expansion.
 
 ## Phase 2: First complete recruiter-facing slice

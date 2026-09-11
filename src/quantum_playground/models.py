@@ -121,7 +121,12 @@ class SimulationConfig:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class NumericalDiagnostics:
-    """Raw numerical trust indicators for each computed solution."""
+    """Raw numerical trust indicators for each computed solution.
+
+    Residual norms are relative 2-norms ``||H psi - E psi|| / ||H psi||``.
+    Normalization errors are ``|integral(|psi|^2 dx) - 1|`` and the orthogonality
+    error is the largest absolute entry of the overlap matrix minus the identity.
+    """
 
     residual_norms: FloatArray
     normalization_errors: FloatArray

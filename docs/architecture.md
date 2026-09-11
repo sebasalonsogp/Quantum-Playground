@@ -12,8 +12,8 @@ room for a future composer without speculative infrastructure.
 |---|---|---|
 | `models` | Immutable simulation inputs, results, and diagnostics | — |
 | `potentials` | Presets and parameter validation | `models` |
-| `solver` | Grid, Hamiltonian, eigenpairs, ordering, normalization | `models`, `potentials` |
-| `validation` | Analytic errors, residuals, orthogonality, convergence | `models`, `solver` |
+| `solver` | Grid, Hamiltonian, eigenpairs, normalization, raw diagnostics | `models`, `potentials` |
+| `validation` | Analytic errors, tolerances, and convergence evidence | `models`, `solver` |
 | `figures` | Coordinated Plotly figures | `models` |
 | `app` | Streamlit state, controls, explanations, and rendering | all provider modules |
 

@@ -47,7 +47,7 @@ def test_selected_state_has_text_and_line_style_not_just_color(well_result) -> N
     assert energy_traces[2].line.dash == "solid"
     assert energy_traces[2].line.width > energy_traces[0].line.width
     assert energy_traces[0].line.dash == "dash"
-    assert "state n = 3" in figure.layout.title.text
+    assert "displayed state 3" in figure.layout.title.text.lower()
     assert any(annotation.text == "E3" for annotation in figure.layout.annotations)
 
 

@@ -180,7 +180,7 @@ def build_stationary_state_figure(
         shared_xaxes=True,
         row_heights=(0.68, 0.32),
         vertical_spacing=0.13,
-        subplot_titles=(None, f"State n = {state_number} · true numerical profile"),
+        subplot_titles=(None, f"Displayed state {state_number} · true numerical profile"),
     )
     figure.add_trace(
         go.Scatter(
@@ -259,7 +259,7 @@ def build_stationary_state_figure(
         plot_bgcolor=_BACKGROUND,
         font={"color": _TEXT, "family": "Inter, ui-sans-serif, system-ui, sans-serif"},
         title={
-            "text": f"Energy landscape · state n = {state_number}",
+            "text": f"Energy landscape · displayed state {state_number}",
             "x": 0.0,
             "xanchor": "left",
         },

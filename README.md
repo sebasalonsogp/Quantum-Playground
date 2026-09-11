@@ -10,11 +10,12 @@ well—while keeping numerical diagnostics available for deeper inspection.
 
 ## Status
 
-The first interactive vertical slice is complete. Visitors can explore an infinite square well,
-change its width and numerical resolution, inspect six stationary states as wavefunctions or
-probability densities, and verify the result against exact energies and numerical diagnostics.
+Two interactive vertical slices are complete. Visitors can compare an infinite square well with a
+harmonic oscillator, change one interpretable confinement parameter, inspect six stationary states
+as wavefunctions or probability densities, and verify each result against exact energies and
+numerical diagnostics.
 
-The harmonic oscillator and flagship double well remain planned MVP work.
+The flagship double well remains planned MVP work.
 
 ## Planned stack
 

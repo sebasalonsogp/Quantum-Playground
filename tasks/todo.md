@@ -176,14 +176,21 @@ complete gallery-to-result path using the existing contracts and components.
 
 **Acceptance criteria:**
 
-- [ ] The preset uses `V(x) = 0.5 * omega^2 * x^2` in the documented dimensionless convention.
-- [ ] Low states agree with analytic harmonic-oscillator energies within the stated domain tolerance.
-- [ ] Switching experiments updates controls, explanation, result, and figure reliably.
+- [x] The preset uses `V(x) = 0.5 * omega^2 * x^2` in the documented dimensionless convention.
+- [x] Low states agree with analytic harmonic-oscillator energies within the stated domain tolerance.
+- [x] Switching experiments updates controls, explanation, result, and figure reliably.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest -k harmonic`
-- [ ] Manual check: change frequency and explain the observed spacing change.
+- [x] Focused tests: `uv run pytest -k harmonic`
+- [x] Manual check: changed frequency from `omega = 1.0` to `omega = 2.0` in a real browser on
+  2026-09-11. The ground-state energy doubled from approximately `0.5` to `1.0`, every adjacent
+  level gap doubled from `1.0` to `2.0`, and the state contracted toward the potential minimum.
+
+**Recorded evidence (2026-09-11):** On the fixed `[-8, 8]` domain with 1,201 points, maximum
+relative energy errors across the six displayed states were `3.073e-5`, `6.162e-5`, and
+`1.232e-4` at `omega = 0.5`, `1.0`, and `2.0`, respectively. All remain below the stated
+`1.5e-4` tolerance.
 
 **Dependencies:** Checkpoint B
 

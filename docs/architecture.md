@@ -13,7 +13,7 @@ room for a future composer without speculative infrastructure.
 | `models` | Immutable simulation inputs, results, and diagnostics | — |
 | `potentials` | Presets and parameter validation | `models` |
 | `solver` | Grid, Hamiltonian, eigenpairs, normalization, raw diagnostics | `models`, `potentials` |
-| `validation` | Analytic errors, tolerances, and convergence evidence | `models`, `solver` |
+| `validation` | Analytic errors, tolerances, and convergence evidence | `models`, `potentials` |
 | `figures` | Coordinated Plotly figures | `models` |
 | `app` | Streamlit state, controls, explanations, and rendering | all provider modules |
 
@@ -119,19 +119,26 @@ Plotly figure  numerical details
 
 The infinite square well is the numerical oracle for the first milestone. In dimensionless units,
 its exact energies are `E_n = pi^2 n^2 / (2 L^2)`, where `L` is the well width and `n` begins at
-one. A default result is trustworthy only when all of these checks pass:
+one. The harmonic oscillator uses `V(x) = 0.5 omega^2 x^2` and exact energies
+`E_n = omega(n + 0.5)`, where `n` begins at zero. It approximates the unbounded problem on the
+fixed domain `[-8, 8]` with 1,201 points so frequency remains the only user-facing oscillator
+parameter.
+
+A result is trustworthy only when all applicable checks pass:
 
 | Check | MVP tolerance |
 |---|---:|
-| Maximum relative energy error | `1e-4` |
+| Maximum relative energy error, infinite well | `1e-4` |
+| Maximum relative energy error, harmonic oscillator | `1.5e-4` |
 | Maximum relative residual | `1e-8` |
 | Maximum normalization error | `1e-12` |
 | Maximum orthogonality error | `1e-12` |
 
 Convergence evidence compares matching solutions in coarse-to-fine order. Relative energy errors
 must decrease, and every adjacent-grid observed order must be within `0.1` of the second-order
-target. These are transparent acceptance gates, not solver inputs; future experiments can add their
-own analytic criteria without changing the shared numerical path.
+target. The oscillator energy tolerance holds for all six states across the bounded frequency range
+`0.5 <= omega <= 2.0`. These are transparent acceptance gates, not solver inputs; future
+experiments can add their own analytic criteria without changing the shared numerical path.
 
 ## Streamlit boundary
 
@@ -203,5 +210,6 @@ Never:
 - [Plotly animations](https://plotly.com/python/animations/)
 - [SciPy sparse eigensolver](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigsh.html)
 - [MIT infinite-square-well derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2016/resources/mit8_04s16_lecnotes11/)
+- [MIT quantum-harmonic-oscillator derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2013/resources/mit8_04s13_lec08/)
 - [MIT centered second-difference derivation](https://math.mit.edu/icg/resources/teaching/18.085-spring2015/SecondOrder.pdf)
 - [uv projects](https://docs.astral.sh/uv/concepts/projects/)

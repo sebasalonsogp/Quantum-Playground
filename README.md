@@ -41,6 +41,9 @@ visualization. See [docs/architecture.md](docs/architecture.md) for the approved
 The motivation, target audience, MVP, success criteria, and exclusions are recorded in the
 [product brief](docs/product-brief.md).
 
+The phased delivery strategy and task-level acceptance criteria are in the
+[implementation plan](tasks/plan.md).
+
 ## Scope
 
 The potential composer is intentionally deferred. The MVP prioritizes curated experiments,

@@ -35,14 +35,14 @@ provides deterministic defaults for scientific tests and the first demo.
 
 **Acceptance criteria:**
 
-- [ ] The well uses the documented domain and boundary convention.
-- [ ] Preset metadata includes bounded defaults and concise user-facing explanatory text.
-- [ ] Potential output has the expected shape, type, and finite interior values.
+- [x] The well uses the documented domain and boundary convention.
+- [x] Preset metadata includes bounded defaults and concise user-facing explanatory text.
+- [x] Potential output has the expected shape, type, and finite interior values.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_potentials.py`
-- [ ] Manual check: inspect the preset's default configuration and sampled potential.
+- [x] Focused tests: `uv run pytest tests/test_potentials.py`
+- [x] Manual check: inspect the preset's default configuration and sampled potential.
 
 **Dependencies:** Task 1
 

@@ -4,7 +4,7 @@ from scipy.sparse import csr_array
 from scipy.sparse.linalg import ArpackError, ArpackNoConvergence
 
 from quantum_playground.models import ExperimentId, SimulationConfig
-from quantum_playground.potentials import create_infinite_well_config
+from quantum_playground.potentials import create_double_well_config, create_infinite_well_config
 from quantum_playground.solver import (
     SolverError,
     build_hamiltonian,
@@ -156,3 +156,80 @@ def test_default_infinite_well_solve_is_complete_and_finite() -> None:
     assert result.wavefunctions.shape == (6, 801)
     assert np.all(np.isfinite(result.energies))
     assert np.all(np.isfinite(result.wavefunctions))
+
+
+def test_default_double_well_has_low_even_odd_tunneling_partners() -> None:
+    result = solve(create_double_well_config())
+
+    assert result.energies[0] < result.energies[1] < 4.0
+    assert result.energies[1] - result.energies[0] > 0.0
+    np.testing.assert_allclose(
+        result.wavefunctions[0],
+        result.wavefunctions[0, ::-1],
+        rtol=0.0,
+        atol=1e-9,
+    )
+    np.testing.assert_allclose(
+        result.wavefunctions[1],
+        -result.wavefunctions[1, ::-1],
+        rtol=0.0,
+        atol=1e-9,
+    )
+
+
+@pytest.mark.parametrize(
+    ("barrier_height", "well_separation"),
+    [(2.5, 2.0), (2.5, 4.0), (8.0, 2.0), (8.0, 4.0)],
+)
+def test_double_well_low_pair_stays_below_barrier_across_control_bounds(
+    barrier_height: float,
+    well_separation: float,
+) -> None:
+    result = solve(
+        create_double_well_config(
+            barrier_height=barrier_height,
+            well_separation=well_separation,
+            eigenstate_count=2,
+        )
+    )
+
+    assert result.energies[1] < barrier_height
+
+
+def test_double_well_splitting_decreases_with_barrier_height_and_separation() -> None:
+    low_barrier = solve(
+        create_double_well_config(
+            barrier_height=2.5,
+            well_separation=3.0,
+            eigenstate_count=2,
+        )
+    )
+    high_barrier = solve(
+        create_double_well_config(
+            barrier_height=8.0,
+            well_separation=3.0,
+            eigenstate_count=2,
+        )
+    )
+    close_wells = solve(
+        create_double_well_config(
+            barrier_height=4.0,
+            well_separation=2.0,
+            eigenstate_count=2,
+        )
+    )
+    far_wells = solve(
+        create_double_well_config(
+            barrier_height=4.0,
+            well_separation=4.0,
+            eigenstate_count=2,
+        )
+    )
+
+    low_barrier_splitting = low_barrier.energies[1] - low_barrier.energies[0]
+    high_barrier_splitting = high_barrier.energies[1] - high_barrier.energies[0]
+    close_well_splitting = close_wells.energies[1] - close_wells.energies[0]
+    far_well_splitting = far_wells.energies[1] - far_wells.energies[0]
+
+    assert 0.0 < high_barrier_splitting < low_barrier_splitting
+    assert 0.0 < far_well_splitting < close_well_splitting

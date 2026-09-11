@@ -140,6 +140,24 @@ target. The oscillator energy tolerance holds for all six states across the boun
 `0.5 <= omega <= 2.0`. These are transparent acceptance gates, not solver inputs; future
 experiments can add their own analytic criteria without changing the shared numerical path.
 
+### Symmetric double-well contract
+
+The double well uses
+
+`V(x) = V0 * ((2x / d)^2 - 1)^2`
+
+on the fixed domain `[-6, 6]` with 1,201 grid points by default. This is the standard quartic
+`lambda * (x^2 - a^2)^2` form reparameterized so the controls describe visible geometry directly:
+`V0` is the central barrier height, while `d` is the full distance between the minima at
+`x = +/-d/2`. The bounded controls are `2.5 <= V0 <= 8.0` and `2.0 <= d <= 4.0`.
+
+The quartic double well has no elementary analytic spectrum, so its acceptance evidence differs
+from the first two presets. Tests establish exact potential symmetry and geometry, even/odd parity
+of the two lowest states, a positive low-state energy splitting, and decreasing splitting as either
+barrier height or well separation increases. The lower barrier bound keeps both members of this
+tunneling pair below the central barrier at every corner of the supported control space. Residual,
+normalization, and orthogonality diagnostics still come from the same shared solver path.
+
 ## Streamlit boundary
 
 `app.py` owns page configuration, controls, session state, cached solver calls, explanations,
@@ -211,5 +229,7 @@ Never:
 - [SciPy sparse eigensolver](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigsh.html)
 - [MIT infinite-square-well derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2016/resources/mit8_04s16_lecnotes11/)
 - [MIT quantum-harmonic-oscillator derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2013/resources/mit8_04s13_lec08/)
+- [UCSB quartic double-well exercises](https://web.physics.ucsb.edu/~davidgrabovsky/files-teaching/Double%20Well%20Problems.pdf)
+- [MIT double-well symmetry and tunneling lecture](https://ocw.mit.edu/courses/8-321-quantum-theory-i-fall-2017/resources/mit8_321f17_lec23/)
 - [MIT centered second-difference derivation](https://math.mit.edu/icg/resources/teaching/18.085-spring2015/SecondOrder.pdf)
 - [uv projects](https://docs.astral.sh/uv/concepts/projects/)

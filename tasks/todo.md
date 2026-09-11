@@ -206,14 +206,21 @@ parameters and tests for symmetry, minima, barrier behavior, and low-state split
 
 **Acceptance criteria:**
 
-- [ ] The potential enters through the same sampled `V(x)` contract as other presets.
-- [ ] Parameter changes move the intended geometric feature without creating invalid configurations.
-- [ ] Tests establish expected symmetry and physically sensible low-state splitting behavior.
+- [x] The potential enters through the same sampled `V(x)` contract as other presets.
+- [x] Parameter changes move the intended geometric feature without creating invalid configurations.
+- [x] Tests establish expected symmetry and physically sensible low-state splitting behavior.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest -k double_well`
-- [ ] Manual check: sample minimum, default, and maximum control values.
+- [x] Focused tests: `uv run pytest -k double_well`
+- [x] Manual check: sample minimum, default, and maximum control values.
+
+**Recorded evidence (2026-09-11):** With `V(x) = V0 * ((2x / d)^2 - 1)^2` on `[-6, 6]`,
+the minimum (`V0 = 2.5`, `d = 2.0`), default (`V0 = 4.0`, `d = 3.0`), and maximum
+(`V0 = 8.0`, `d = 4.0`) samples placed their minima at `+/-1.0`, `+/-1.5`, and `+/-2.0`
+and reproduced their requested central barriers. Their lowest-state splittings were `0.631067`,
+`0.068624`, and `0.000758`, respectively; both states remained below the barrier and maximum
+relative residuals were at most `1.41e-11`. Solve times were 69.2–112.0 ms locally.
 
 **Dependencies:** Checkpoint B
 

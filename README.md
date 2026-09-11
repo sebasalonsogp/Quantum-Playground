@@ -15,7 +15,9 @@ harmonic oscillator, change one interpretable confinement parameter, inspect six
 as wavefunctions or probability densities, and verify each result against exact energies and
 numerical diagnostics.
 
-The flagship double well remains planned MVP work.
+The symmetric double-well scientific model is also complete and tested across its bounded barrier
+height and well-separation controls. Its recruiter-facing flagship interaction is the next MVP
+slice.
 
 ## Planned stack
 

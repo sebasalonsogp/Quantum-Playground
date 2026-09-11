@@ -117,6 +117,41 @@ HARMONIC_OSCILLATOR_PRESET = ExperimentPreset(
 
 HARMONIC_DOMAIN = (-8.0, 8.0)
 
+BARRIER_HEIGHT = ParameterSpec(
+    key="barrier_height",
+    label="Central barrier height V₀",
+    minimum=2.5,
+    maximum=8.0,
+    default=4.0,
+    step=0.5,
+    help_text="Potential energy of the central barrier above the two minima.",
+)
+
+WELL_SEPARATION = ParameterSpec(
+    key="well_separation",
+    label="Distance between minima d",
+    minimum=2.0,
+    maximum=4.0,
+    default=3.0,
+    step=0.1,
+    help_text="Full distance between the symmetric left and right potential minima.",
+)
+
+DOUBLE_WELL_PRESET = ExperimentPreset(
+    experiment=ExperimentId.DOUBLE_WELL,
+    title="Symmetric double well",
+    description="Change the barrier and separation to reveal tunneling-induced state splitting.",
+    insight="Its lowest even and odd states form a tunneling pair separated by a small energy gap.",
+    default_grid_points=1_201,
+    minimum_grid_points=401,
+    maximum_grid_points=1_601,
+    grid_step=200,
+    default_eigenstate_count=6,
+    parameters=(BARRIER_HEIGHT, WELL_SEPARATION),
+)
+
+DOUBLE_WELL_DOMAIN = (-6.0, 6.0)
+
 
 def _validate_grid_points(grid_points: object, preset: ExperimentPreset) -> int:
     if isinstance(grid_points, bool) or not isinstance(grid_points, Integral):
@@ -171,6 +206,30 @@ def create_harmonic_oscillator_config(
     )
 
 
+def create_double_well_config(
+    *,
+    barrier_height: float = BARRIER_HEIGHT.default,
+    well_separation: float = WELL_SEPARATION.default,
+    grid_points: int = DOUBLE_WELL_PRESET.default_grid_points,
+    eigenstate_count: int = DOUBLE_WELL_PRESET.default_eigenstate_count,
+) -> SimulationConfig:
+    """Create a validated symmetric quartic double-well configuration."""
+
+    canonical_barrier = BARRIER_HEIGHT.validate(barrier_height)
+    canonical_separation = WELL_SEPARATION.validate(well_separation)
+    canonical_grid_points = _validate_grid_points(grid_points, DOUBLE_WELL_PRESET)
+    return SimulationConfig(
+        experiment=ExperimentId.DOUBLE_WELL,
+        grid_points=canonical_grid_points,
+        domain=DOUBLE_WELL_DOMAIN,
+        eigenstate_count=eigenstate_count,
+        parameters=(
+            (BARRIER_HEIGHT.key, canonical_barrier),
+            (WELL_SEPARATION.key, canonical_separation),
+        ),
+    )
+
+
 def _validated_grid(config: SimulationConfig, x: ArrayLike) -> FloatArray:
     grid = np.asarray(x, dtype=np.float64)
     expected_shape = (config.grid_points,)
@@ -216,6 +275,21 @@ def evaluate_potential(config: SimulationConfig, x: ArrayLike) -> FloatArray:
         if not np.allclose(config.domain, HARMONIC_DOMAIN, rtol=1e-12, atol=1e-12):
             raise ValueError("harmonic-oscillator domain must match the preset finite domain")
         potential = 0.5 * omega**2 * grid**2
+    elif config.experiment is ExperimentId.DOUBLE_WELL:
+        expected_parameters = (BARRIER_HEIGHT.key, WELL_SEPARATION.key)
+        if parameter_names != expected_parameters:
+            raise ValueError(
+                "double-well parameters must contain exactly 'barrier_height' and 'well_separation'"
+            )
+        barrier_height = BARRIER_HEIGHT.validate(config.parameters[0][1])
+        well_separation = WELL_SEPARATION.validate(config.parameters[1][1])
+        if not np.allclose(config.domain, DOUBLE_WELL_DOMAIN, rtol=1e-12, atol=1e-12):
+            raise ValueError("double-well domain must match the preset finite domain")
+
+        # Reparameterized from lambda * (x^2 - a^2)^2 so the controls directly
+        # set V(0) and the full distance 2a between minima.
+        # Source: https://web.physics.ucsb.edu/~davidgrabovsky/files-teaching/Double%20Well%20Problems.pdf
+        potential = barrier_height * ((2.0 * grid / well_separation) ** 2 - 1.0) ** 2
     else:
         raise ValueError(f"potential {config.experiment.value!r} is not implemented")
 
@@ -224,12 +298,17 @@ def evaluate_potential(config: SimulationConfig, x: ArrayLike) -> FloatArray:
 
 
 __all__ = [
+    "BARRIER_HEIGHT",
+    "DOUBLE_WELL_DOMAIN",
+    "DOUBLE_WELL_PRESET",
     "HARMONIC_DOMAIN",
     "HARMONIC_OSCILLATOR_PRESET",
     "INFINITE_WELL_PRESET",
     "OMEGA",
+    "WELL_SEPARATION",
     "ExperimentPreset",
     "ParameterSpec",
+    "create_double_well_config",
     "create_harmonic_oscillator_config",
     "create_infinite_well_config",
     "evaluate_potential",

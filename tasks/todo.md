@@ -119,14 +119,16 @@ wavefunctions, and probability density a consistent visual language without impo
 
 **Acceptance criteria:**
 
-- [ ] Potential and energy levels share a meaningful energy axis and remain distinguishable.
-- [ ] A selected state can be viewed as wavefunction or probability density.
-- [ ] Figure structure is deterministic and covered by selective non-pixel tests.
+- [x] Potential and energy levels share a meaningful energy axis and remain distinguishable.
+- [x] A selected state can be viewed as wavefunction or probability density.
+- [x] Figure structure is deterministic and covered by selective non-pixel tests.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_figures.py`
-- [ ] Manual check: inspect default and higher-state figures at desktop width.
+- [x] Focused tests: `uv run pytest tests/test_figures.py`
+- [x] Manual check: inspected the default wavefunction and a higher-state probability density at
+  1264 × 712 on 2026-09-11. Labels, nodes, energy levels, and boundaries remained readable; the
+  default Plotly zero-axis line was disabled because it could be mistaken for a physical boundary.
 
 **Dependencies:** Tasks 3-4
 

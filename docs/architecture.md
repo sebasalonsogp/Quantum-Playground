@@ -45,9 +45,11 @@ quantum-playground/
 │       ├── validation.py
 │       └── figures.py
 ├── tests/
+│   ├── test_models.py
 │   ├── test_potentials.py
 │   ├── test_solver.py
 │   ├── test_validation.py
+│   ├── test_figures.py
 │   └── test_app.py
 ├── docs/
 │   ├── product-brief.md
@@ -197,6 +199,7 @@ Never:
 - [Streamlit Plotly integration](https://docs.streamlit.io/develop/api-reference/charts/st.plotly_chart)
 - [Streamlit fragments](https://docs.streamlit.io/develop/api-reference/execution-flow/st.fragment)
 - [Streamlit Components v2](https://docs.streamlit.io/develop/concepts/custom-components/components-v2)
+- [Plotly subplots](https://plotly.com/python/subplots/)
 - [Plotly animations](https://plotly.com/python/animations/)
 - [SciPy sparse eigensolver](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigsh.html)
 - [MIT infinite-square-well derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2016/resources/mit8_04s16_lecnotes11/)

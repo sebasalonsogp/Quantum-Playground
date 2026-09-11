@@ -144,14 +144,16 @@ reset behavior, and expandable numerical details.
 
 **Acceptance criteria:**
 
-- [ ] A first-time visitor can identify the experiment and produce a changed result within 90 seconds.
-- [ ] Controls are bounded, labeled, resettable, and connected to the shared solver path.
-- [ ] Initial load, recomputation, state selection, toggle, and reset pass `AppTest` coverage.
+- [x] A first-time visitor can identify the experiment and produce a changed result within 90 seconds.
+- [x] Controls are bounded, labeled, resettable, and connected to the shared solver path.
+- [x] Initial load, recomputation, state selection, toggle, and reset pass `AppTest` coverage.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_app.py`
-- [ ] Manual check: complete the first-visit journey from a fresh session.
+- [x] Focused tests: `uv run pytest tests/test_app.py`
+- [x] Manual check: completed the first-visit journey at 1264 × 712 on 2026-09-11,
+  including state selection, density switching, width recomputation, numerical-details review,
+  and reset.
 
 **Dependencies:** Task 5
 
@@ -161,9 +163,9 @@ reset behavior, and expandable numerical details.
 
 ### Checkpoint B: Demonstrable vertical slice
 
-- [ ] Full quality suite and package build pass.
-- [ ] Infinite-well interaction works end to end without exposing implementation jargon first.
-- [ ] Browser review confirms the figure and controls are readable at the target desktop viewport.
+- [x] Full quality suite and package build pass.
+- [x] Infinite-well interaction works end to end without exposing implementation jargon first.
+- [x] Browser review confirms the figure and controls are readable at the target desktop viewport.
 
 ## Phase 3: Breadth and flagship depth
 

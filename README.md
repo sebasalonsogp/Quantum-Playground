@@ -10,8 +10,11 @@ well—while keeping numerical diagnostics available for deeper inspection.
 
 ## Status
 
-Project scaffold. The first implementation milestone is an analytically validated infinite
-square-well solver; no numerical behavior has been implemented yet.
+The first interactive vertical slice is complete. Visitors can explore an infinite square well,
+change its width and numerical resolution, inspect six stationary states as wavefunctions or
+probability densities, and verify the result against exact energies and numerical diagnostics.
+
+The harmonic oscillator and flagship double well remain planned MVP work.
 
 ## Planned stack
 

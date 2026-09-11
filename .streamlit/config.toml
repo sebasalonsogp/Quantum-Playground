@@ -1,12 +1,12 @@
 [theme]
 base = "dark"
-primaryColor = "#8B5CF6"
+primaryColor = "#0E7490"
 backgroundColor = "#07111F"
 secondaryBackgroundColor = "#101C2E"
 textColor = "#F1F5F9"
 linkColor = "#67E8F9"
-baseRadius = "0.75rem"
-buttonRadius = "full"
+baseRadius = "0.5rem"
+buttonRadius = "0.4rem"
 showWidgetBorder = true
 chartCategoricalColors = ["#8B5CF6", "#22D3EE", "#F472B6", "#FBBF24", "#34D399"]
 

@@ -92,9 +92,33 @@ INFINITE_WELL_PRESET = ExperimentPreset(
     parameters=(WIDTH,),
 )
 
+OMEGA = ParameterSpec(
+    key="omega",
+    label="Oscillator frequency ω",
+    minimum=0.5,
+    maximum=2.0,
+    default=1.0,
+    step=0.1,
+    help_text="Frequency controlling the parabolic confinement and energy-level spacing.",
+)
 
-def _validate_grid_points(grid_points: object) -> int:
-    preset = INFINITE_WELL_PRESET
+HARMONIC_OSCILLATOR_PRESET = ExperimentPreset(
+    experiment=ExperimentId.HARMONIC_OSCILLATOR,
+    title="Harmonic oscillator",
+    description="Change the confinement strength and observe uniformly spaced energy levels.",
+    insight="Its equal level spacing contrasts with the quadratic spacing of the infinite well.",
+    default_grid_points=1_201,
+    minimum_grid_points=401,
+    maximum_grid_points=1_601,
+    grid_step=200,
+    default_eigenstate_count=6,
+    parameters=(OMEGA,),
+)
+
+HARMONIC_DOMAIN = (-8.0, 8.0)
+
+
+def _validate_grid_points(grid_points: object, preset: ExperimentPreset) -> int:
     if isinstance(grid_points, bool) or not isinstance(grid_points, Integral):
         raise ValueError("grid_points must be an integer")
     result = int(grid_points)
@@ -117,7 +141,7 @@ def create_infinite_well_config(
     """Create a validated infinite-well configuration from bounded controls."""
 
     canonical_width = WIDTH.validate(width)
-    canonical_grid_points = _validate_grid_points(grid_points)
+    canonical_grid_points = _validate_grid_points(grid_points, INFINITE_WELL_PRESET)
     half_width = canonical_width / 2.0
     return SimulationConfig(
         experiment=ExperimentId.INFINITE_WELL,
@@ -125,6 +149,25 @@ def create_infinite_well_config(
         domain=(-half_width, half_width),
         eigenstate_count=eigenstate_count,
         parameters=((WIDTH.key, canonical_width),),
+    )
+
+
+def create_harmonic_oscillator_config(
+    *,
+    omega: float = OMEGA.default,
+    grid_points: int = HARMONIC_OSCILLATOR_PRESET.default_grid_points,
+    eigenstate_count: int = HARMONIC_OSCILLATOR_PRESET.default_eigenstate_count,
+) -> SimulationConfig:
+    """Create a validated harmonic-oscillator configuration."""
+
+    canonical_omega = OMEGA.validate(omega)
+    canonical_grid_points = _validate_grid_points(grid_points, HARMONIC_OSCILLATOR_PRESET)
+    return SimulationConfig(
+        experiment=ExperimentId.HARMONIC_OSCILLATOR,
+        grid_points=canonical_grid_points,
+        domain=HARMONIC_DOMAIN,
+        eigenstate_count=eigenstate_count,
+        parameters=((OMEGA.key, canonical_omega),),
     )
 
 
@@ -156,26 +199,38 @@ def evaluate_potential(config: SimulationConfig, x: ArrayLike) -> FloatArray:
     non-finite values in the numerical Hamiltonian.
     """
 
-    if config.experiment is not ExperimentId.INFINITE_WELL:
+    grid = _validated_grid(config, x)
+    parameter_names = tuple(name for name, _ in config.parameters)
+    if config.experiment is ExperimentId.INFINITE_WELL:
+        if parameter_names != (WIDTH.key,):
+            raise ValueError("infinite-well parameters must contain exactly 'width'")
+        width = WIDTH.validate(config.parameters[0][1])
+        expected_domain = (-width / 2.0, width / 2.0)
+        if not np.allclose(config.domain, expected_domain, rtol=1e-12, atol=1e-12):
+            raise ValueError("infinite-well domain must be centered and match its width parameter")
+        potential = np.zeros(config.grid_points, dtype=np.float64)
+    elif config.experiment is ExperimentId.HARMONIC_OSCILLATOR:
+        if parameter_names != (OMEGA.key,):
+            raise ValueError("harmonic-oscillator parameters must contain exactly 'omega'")
+        omega = OMEGA.validate(config.parameters[0][1])
+        if not np.allclose(config.domain, HARMONIC_DOMAIN, rtol=1e-12, atol=1e-12):
+            raise ValueError("harmonic-oscillator domain must match the preset finite domain")
+        potential = 0.5 * omega**2 * grid**2
+    else:
         raise ValueError(f"potential {config.experiment.value!r} is not implemented")
-    if tuple(name for name, _ in config.parameters) != (WIDTH.key,):
-        raise ValueError("infinite-well parameters must contain exactly 'width'")
 
-    width = WIDTH.validate(config.parameters[0][1])
-    expected_domain = (-width / 2.0, width / 2.0)
-    if not np.allclose(config.domain, expected_domain, rtol=1e-12, atol=1e-12):
-        raise ValueError("infinite-well domain must be centered and match its width parameter")
-
-    _validated_grid(config, x)
-    potential = np.zeros(config.grid_points, dtype=np.float64)
     potential.setflags(write=False)
     return potential
 
 
 __all__ = [
+    "HARMONIC_DOMAIN",
+    "HARMONIC_OSCILLATOR_PRESET",
     "INFINITE_WELL_PRESET",
+    "OMEGA",
     "ExperimentPreset",
     "ParameterSpec",
+    "create_harmonic_oscillator_config",
     "create_infinite_well_config",
     "evaluate_potential",
 ]

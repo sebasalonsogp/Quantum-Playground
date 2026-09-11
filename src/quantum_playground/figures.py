@@ -236,9 +236,14 @@ def build_stationary_state_figure(
         col=1,
     )
 
-    energy_values = np.concatenate((result.potential, result.energies, scaled_profile))
-    energy_min = float(np.min(energy_values))
-    energy_max = float(np.max(energy_values))
+    energy_min = float(
+        min(
+            np.min(result.potential),
+            np.min(result.energies),
+            np.min(scaled_profile),
+        )
+    )
+    energy_max = float(max(np.max(result.energies), np.max(scaled_profile)))
     energy_span = max(energy_max - energy_min, 1.0)
     energy_padding = 0.08 * energy_span
     profile_max = float(np.max(np.abs(profile)))

@@ -16,12 +16,13 @@ from quantum_playground.models import (
     SimulationConfig,
     SimulationResult,
 )
-from quantum_playground.potentials import WIDTH
+from quantum_playground.potentials import HARMONIC_DOMAIN, OMEGA, WIDTH
 
 MAX_RELATIVE_RESIDUAL = 1e-8
 MAX_NORMALIZATION_ERROR = 1e-12
 MAX_ORTHOGONALITY_ERROR = 1e-12
 MAX_RELATIVE_ENERGY_ERROR = 1e-4
+MAX_HARMONIC_RELATIVE_ENERGY_ERROR = 1.5e-4
 SECOND_ORDER_TARGET = 2.0
 SECOND_ORDER_TOLERANCE = 0.1
 
@@ -47,13 +48,14 @@ def _nonnegative_float(value: object, name: str) -> float:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class ValidationReport:
-    """Analytic and numerical trust evidence for one infinite-well solve."""
+    """Analytic and numerical trust evidence for one stationary-state solve."""
 
     analytic_energies: FloatArray
     relative_energy_errors: FloatArray
     maximum_relative_residual: float
     maximum_normalization_error: float
     orthogonality_error: float
+    relative_energy_tolerance: float = MAX_RELATIVE_ENERGY_ERROR
 
     def __post_init__(self) -> None:
         analytic_energies = _readonly_vector(self.analytic_energies, "analytic_energies")
@@ -83,6 +85,13 @@ class ValidationReport:
             "orthogonality_error",
             _nonnegative_float(self.orthogonality_error, "orthogonality_error"),
         )
+        relative_energy_tolerance = _nonnegative_float(
+            self.relative_energy_tolerance,
+            "relative_energy_tolerance",
+        )
+        if relative_energy_tolerance == 0.0:
+            raise ValueError("relative_energy_tolerance must be positive")
+        object.__setattr__(self, "relative_energy_tolerance", relative_energy_tolerance)
 
     @property
     def maximum_relative_energy_error(self) -> float:
@@ -90,7 +99,7 @@ class ValidationReport:
 
     @property
     def energy_accurate(self) -> bool:
-        return self.maximum_relative_energy_error <= MAX_RELATIVE_ENERGY_ERROR
+        return self.maximum_relative_energy_error <= self.relative_energy_tolerance
 
     @property
     def residuals_accurate(self) -> bool:
@@ -194,12 +203,41 @@ def infinite_well_analytic_energies(config: SimulationConfig) -> FloatArray:
     return energies
 
 
-def validate_infinite_well(result: SimulationResult) -> ValidationReport:
-    """Compare one solution with exact energies and documented numerical tolerances."""
+def _harmonic_oscillator_frequency(config: SimulationConfig) -> float:
+    if not isinstance(config, SimulationConfig):
+        raise ValueError("config must be a SimulationConfig")
+    if config.experiment is not ExperimentId.HARMONIC_OSCILLATOR:
+        raise ValueError("validation requires a harmonic-oscillator configuration")
+    if tuple(name for name, _ in config.parameters) != (OMEGA.key,):
+        raise ValueError("harmonic-oscillator parameters must contain exactly 'omega'")
 
-    if not isinstance(result, SimulationResult):
-        raise ValueError("result must be a SimulationResult")
-    analytic_energies = infinite_well_analytic_energies(result.config)
+    omega = OMEGA.validate(config.parameters[0][1])
+    if not np.allclose(config.domain, HARMONIC_DOMAIN, rtol=1e-12, atol=1e-12):
+        raise ValueError("harmonic-oscillator domain must match the preset finite domain")
+    return omega
+
+
+def harmonic_oscillator_analytic_energies(config: SimulationConfig) -> FloatArray:
+    """Return exact oscillator energies ``E_n = hbar omega (n + 1/2)``.
+
+    Here ``n`` starts at zero and the project uses ``hbar = 1``.
+
+    Source: https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2013/resources/mit8_04s13_lec08/
+    """
+
+    omega = _harmonic_oscillator_frequency(config)
+    state_indices = np.arange(config.eigenstate_count, dtype=np.float64)
+    energies = HBAR * omega * (state_indices + 0.5)
+    energies.setflags(write=False)
+    return energies
+
+
+def _validation_report(
+    result: SimulationResult,
+    analytic_energies: FloatArray,
+    *,
+    relative_energy_tolerance: float,
+) -> ValidationReport:
     relative_energy_errors = np.abs(result.energies - analytic_energies) / analytic_energies
     diagnostics = result.diagnostics
     return ValidationReport(
@@ -208,6 +246,33 @@ def validate_infinite_well(result: SimulationResult) -> ValidationReport:
         maximum_relative_residual=float(np.max(diagnostics.residual_norms)),
         maximum_normalization_error=float(np.max(diagnostics.normalization_errors)),
         orthogonality_error=diagnostics.orthogonality_error,
+        relative_energy_tolerance=relative_energy_tolerance,
+    )
+
+
+def validate_infinite_well(result: SimulationResult) -> ValidationReport:
+    """Compare one solution with exact energies and documented numerical tolerances."""
+
+    if not isinstance(result, SimulationResult):
+        raise ValueError("result must be a SimulationResult")
+    analytic_energies = infinite_well_analytic_energies(result.config)
+    return _validation_report(
+        result,
+        analytic_energies,
+        relative_energy_tolerance=MAX_RELATIVE_ENERGY_ERROR,
+    )
+
+
+def validate_harmonic_oscillator(result: SimulationResult) -> ValidationReport:
+    """Validate one oscillator solution on the preset finite domain."""
+
+    if not isinstance(result, SimulationResult):
+        raise ValueError("result must be a SimulationResult")
+    analytic_energies = harmonic_oscillator_analytic_energies(result.config)
+    return _validation_report(
+        result,
+        analytic_energies,
+        relative_energy_tolerance=MAX_HARMONIC_RELATIVE_ENERGY_ERROR,
     )
 
 
@@ -274,6 +339,7 @@ def assess_infinite_well_convergence(
 
 
 __all__ = [
+    "MAX_HARMONIC_RELATIVE_ENERGY_ERROR",
     "MAX_NORMALIZATION_ERROR",
     "MAX_ORTHOGONALITY_ERROR",
     "MAX_RELATIVE_ENERGY_ERROR",
@@ -283,6 +349,8 @@ __all__ = [
     "ConvergenceReport",
     "ValidationReport",
     "assess_infinite_well_convergence",
+    "harmonic_oscillator_analytic_energies",
     "infinite_well_analytic_energies",
+    "validate_harmonic_oscillator",
     "validate_infinite_well",
 ]

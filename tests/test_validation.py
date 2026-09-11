@@ -2,16 +2,22 @@ import numpy as np
 import pytest
 
 from quantum_playground.models import ExperimentId, SimulationConfig
-from quantum_playground.potentials import create_infinite_well_config
+from quantum_playground.potentials import (
+    create_harmonic_oscillator_config,
+    create_infinite_well_config,
+)
 from quantum_playground.solver import solve
 from quantum_playground.validation import (
+    MAX_HARMONIC_RELATIVE_ENERGY_ERROR,
     MAX_NORMALIZATION_ERROR,
     MAX_ORTHOGONALITY_ERROR,
     MAX_RELATIVE_ENERGY_ERROR,
     MAX_RELATIVE_RESIDUAL,
     SECOND_ORDER_TOLERANCE,
     assess_infinite_well_convergence,
+    harmonic_oscillator_analytic_energies,
     infinite_well_analytic_energies,
+    validate_harmonic_oscillator,
     validate_infinite_well,
 )
 
@@ -48,6 +54,36 @@ def test_default_solution_meets_every_documented_validation_tolerance() -> None:
     assert report.passed
     assert not report.analytic_energies.flags.writeable
     assert not report.relative_energy_errors.flags.writeable
+
+
+def test_harmonic_analytic_energies_are_evenly_spaced_and_scale_with_frequency() -> None:
+    unit_frequency = create_harmonic_oscillator_config(eigenstate_count=4)
+    higher_frequency = create_harmonic_oscillator_config(
+        omega=1.5,
+        eigenstate_count=4,
+    )
+
+    unit_energies = harmonic_oscillator_analytic_energies(unit_frequency)
+    higher_energies = harmonic_oscillator_analytic_energies(higher_frequency)
+
+    np.testing.assert_allclose(unit_energies, np.array([0.5, 1.5, 2.5, 3.5]))
+    np.testing.assert_allclose(np.diff(unit_energies), 1.0)
+    np.testing.assert_allclose(higher_energies, 1.5 * unit_energies)
+    assert not unit_energies.flags.writeable
+
+
+@pytest.mark.parametrize("omega", [0.5, 1.0, 2.0])
+def test_harmonic_solution_meets_stated_finite_domain_tolerance(omega: float) -> None:
+    result = solve(create_harmonic_oscillator_config(omega=omega))
+
+    report = validate_harmonic_oscillator(result)
+
+    assert report.relative_energy_tolerance == MAX_HARMONIC_RELATIVE_ENERGY_ERROR
+    assert report.maximum_relative_energy_error <= MAX_HARMONIC_RELATIVE_ENERGY_ERROR
+    assert report.maximum_relative_residual <= MAX_RELATIVE_RESIDUAL
+    assert report.maximum_normalization_error <= MAX_NORMALIZATION_ERROR
+    assert report.orthogonality_error <= MAX_ORTHOGONALITY_ERROR
+    assert report.passed
 
 
 def test_validation_report_does_not_hide_under_resolved_energy_error() -> None:
@@ -116,6 +152,10 @@ def test_validation_rejects_non_well_configuration_and_invalid_state_index() -> 
 
     with pytest.raises(ValueError, match="infinite-well"):
         infinite_well_analytic_energies(oscillator)
+
+    well = create_infinite_well_config(grid_points=201, eigenstate_count=3)
+    with pytest.raises(ValueError, match="harmonic-oscillator"):
+        harmonic_oscillator_analytic_energies(well)
 
     results = tuple(
         solve(create_infinite_well_config(grid_points=points, eigenstate_count=1))

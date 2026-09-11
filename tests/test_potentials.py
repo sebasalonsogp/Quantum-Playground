@@ -5,7 +5,10 @@ import pytest
 
 from quantum_playground.models import ExperimentId, SimulationConfig
 from quantum_playground.potentials import (
+    HARMONIC_OSCILLATOR_PRESET,
     INFINITE_WELL_PRESET,
+    OMEGA,
+    create_harmonic_oscillator_config,
     create_infinite_well_config,
     evaluate_potential,
 )
@@ -123,12 +126,69 @@ def test_evaluate_potential_rejects_grid_that_does_not_match_config() -> None:
 
 def test_evaluate_potential_rejects_unimplemented_experiment() -> None:
     config = SimulationConfig(
-        experiment=ExperimentId.HARMONIC_OSCILLATOR,
+        experiment=ExperimentId.DOUBLE_WELL,
         grid_points=201,
         domain=(-5.0, 5.0),
         eigenstate_count=4,
-        parameters=(("omega", 1.0),),
+        parameters=(("barrier", 1.0),),
     )
 
     with pytest.raises(ValueError, match="not implemented"):
         evaluate_potential(config, np.linspace(*config.domain, config.grid_points))
+
+
+def test_harmonic_oscillator_preset_has_one_bounded_frequency_control() -> None:
+    preset = HARMONIC_OSCILLATOR_PRESET
+
+    assert preset.experiment is ExperimentId.HARMONIC_OSCILLATOR
+    assert preset.title == "Harmonic oscillator"
+    assert preset.parameters == (OMEGA,)
+    assert OMEGA.key == "omega"
+    assert OMEGA.minimum < OMEGA.default < OMEGA.maximum
+    assert "frequency" in OMEGA.help_text.lower()
+    assert preset.default_grid_points == 1_201
+    assert preset.default_eigenstate_count == 6
+
+
+def test_default_harmonic_config_is_deterministic_on_a_finite_symmetric_domain() -> None:
+    config = create_harmonic_oscillator_config()
+
+    assert config == SimulationConfig(
+        experiment=ExperimentId.HARMONIC_OSCILLATOR,
+        grid_points=1_201,
+        domain=(-8.0, 8.0),
+        eigenstate_count=6,
+        parameters=(("omega", 1.0),),
+    )
+
+
+def test_harmonic_potential_matches_half_omega_squared_x_squared() -> None:
+    config = create_harmonic_oscillator_config(omega=1.5, grid_points=401)
+    x = np.linspace(*config.domain, config.grid_points)
+
+    potential = evaluate_potential(config, x)
+
+    np.testing.assert_allclose(potential, 0.5 * 1.5**2 * x**2)
+    assert potential[config.grid_points // 2] == pytest.approx(0.0)
+    assert potential[0] == pytest.approx(potential[-1])
+    assert not potential.flags.writeable
+
+
+@pytest.mark.parametrize("omega", [0.49, 2.01, np.nan, np.inf, True])
+def test_harmonic_config_rejects_invalid_frequency(omega: Any) -> None:
+    with pytest.raises(ValueError, match="omega"):
+        create_harmonic_oscillator_config(omega=omega)
+
+
+def test_harmonic_potential_rejects_inconsistent_domain_or_parameters() -> None:
+    x = np.linspace(-5.0, 5.0, 201)
+    for parameters in ((), (("frequency", 1.0),), (("omega", 1.0), ("width", 1.0))):
+        config = SimulationConfig(
+            experiment=ExperimentId.HARMONIC_OSCILLATOR,
+            grid_points=201,
+            domain=(-5.0, 5.0),
+            eigenstate_count=4,
+            parameters=parameters,
+        )
+        with pytest.raises(ValueError, match="parameters|domain"):
+            evaluate_potential(config, x)

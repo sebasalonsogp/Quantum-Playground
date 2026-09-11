@@ -5,7 +5,10 @@ import plotly.graph_objects as go
 import pytest
 
 from quantum_playground.figures import StateQuantity, build_stationary_state_figure
-from quantum_playground.potentials import create_infinite_well_config
+from quantum_playground.potentials import (
+    create_harmonic_oscillator_config,
+    create_infinite_well_config,
+)
 from quantum_playground.solver import solve
 
 
@@ -90,6 +93,17 @@ def test_figure_includes_both_domain_boundaries(well_result) -> None:
         if shape.type == "line" and shape.x0 == shape.x1
     }
     assert boundary_positions == set(well_result.config.domain)
+
+
+def test_harmonic_figure_keeps_energy_ladder_legible_without_clipping_data() -> None:
+    result = solve(create_harmonic_oscillator_config())
+
+    figure = build_stationary_state_figure(result, state_index=5)
+
+    np.testing.assert_array_equal(figure.data[0].y, result.potential)
+    assert figure.layout.yaxis.range[1] < float(np.max(result.potential))
+    assert figure.layout.yaxis.range[1] > float(np.max(result.energies))
+    assert figure.layout.yaxis.range[1] > float(np.max(figure.data[-2].y))
 
 
 def test_figure_structure_is_deterministic(well_result) -> None:

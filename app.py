@@ -157,7 +157,7 @@ st.set_page_config(
     page_title="Quantum Playground",
     page_icon=":material/science:",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 for control_key, default_value in _DEFAULT_CONTROLS.items():
@@ -281,8 +281,10 @@ else:
     )
     state_help = "States 1 and 2 are the even/odd tunneling pair; higher states add nodes."
 
-st.subheader(preset.title)
+st.header(preset.title)
 st.markdown(f"{preset.description} **Try this:** {try_this}")
+st.markdown("**Explore this state**")
+st.caption("Results update automatically when you change a control.")
 
 control_columns = st.columns((3, 2, 2), vertical_alignment="bottom")
 with control_columns[0]:
@@ -299,6 +301,7 @@ with control_columns[1]:
         "Show probability density",
         key="show_density",
         help="Switch from the signed wavefunction ψ(x) to the measurable density |ψ(x)|².",
+        wrap=True,
     )
 with control_columns[2]:
     if experiment is ExperimentId.DOUBLE_WELL:
@@ -309,10 +312,12 @@ with control_columns[2]:
             help="Hold the default potential and lowest pair fixed behind the current result.",
             on_change=_store_dynamic_control,
             args=("show_baseline",),
+            wrap=True,
         )
     else:
         show_baseline = False
 
+st.subheader("Live result", icon=":material/insights:")
 result_slot = st.container()
 comparison_result = None
 
@@ -335,7 +340,6 @@ quantity = StateQuantity.PROBABILITY_DENSITY if show_density else StateQuantity.
 
 with result_slot:
     if experiment is ExperimentId.DOUBLE_WELL:
-        metric_columns = st.columns(3)
         splitting = float(result.energies[1] - result.energies[0])
         splitting_delta = None
         if comparison_result is not None:
@@ -343,35 +347,44 @@ with result_slot:
                 comparison_result.energies[1] - comparison_result.energies[0]
             )
             splitting_delta = f"{100.0 * (splitting / reference_splitting - 1.0):+.1f}%"
-        metric_columns[0].metric(
-            "Tunneling split ΔE₀₁",
-            f"{splitting:.6f}",
-            delta=splitting_delta,
-            delta_color="off",
-            delta_arrow="off",
-            delta_description="vs default" if comparison_result is not None else None,
-            help="Energy gap between the even ground state and odd first excited state.",
-        )
-        metric_columns[1].metric(
-            f"Selected energy E{state_number}",
-            f"{result.energies[selected_index]:.5f}",
-        )
-        metric_columns[2].metric("Solve time", f"{result.solve_time_seconds * 1_000:.0f} ms")
+        with st.container(horizontal=True, gap="small"):
+            st.metric(
+                "Tunneling split ΔE₀₁",
+                f"{splitting:.6f}",
+                delta=splitting_delta,
+                delta_color="off",
+                delta_arrow="off",
+                delta_description="vs default" if comparison_result is not None else None,
+                help="Energy gap between the even ground state and odd first excited state.",
+                border=True,
+            )
+            st.metric(
+                f"Selected energy E{state_number}",
+                f"{result.energies[selected_index]:.5f}",
+                border=True,
+            )
+            st.metric(
+                "Solve time",
+                f"{result.solve_time_seconds * 1_000:.0f} ms",
+                border=True,
+            )
     else:
-        metric_columns = st.columns(4)
-        metric_columns[0].metric(
-            f"Selected energy E{state_number}",
-            f"{result.energies[selected_index]:.5f}",
-        )
-        metric_columns[1].metric(
-            "Analytic energy error",
-            f"{report.relative_energy_errors[selected_index]:.2e}",
-        )
-        metric_columns[2].metric(
-            "Maximum residual",
-            f"{report.maximum_relative_residual:.2e}",
-        )
-        metric_columns[3].metric("Solve time", f"{result.solve_time_seconds * 1_000:.0f} ms")
+        with st.container(horizontal=True, gap="small"):
+            st.metric(
+                f"Selected energy E{state_number}",
+                f"{result.energies[selected_index]:.5f}",
+                border=True,
+            )
+            st.metric(
+                "Analytic energy error",
+                f"{report.relative_energy_errors[selected_index]:.2e}",
+                border=True,
+            )
+            st.metric(
+                "Solve time",
+                f"{result.solve_time_seconds * 1_000:.0f} ms",
+                border=True,
+            )
 
     figure = build_stationary_state_figure(
         result,

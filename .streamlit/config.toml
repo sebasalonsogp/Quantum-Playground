@@ -5,9 +5,15 @@ backgroundColor = "#07111F"
 secondaryBackgroundColor = "#101C2E"
 textColor = "#F1F5F9"
 linkColor = "#67E8F9"
+borderColor = "#64748B"
+dataframeBorderColor = "#64748B"
+dataframeHeaderBackgroundColor = "#101C2E"
 baseRadius = "0.5rem"
 buttonRadius = "0.4rem"
 showWidgetBorder = true
+showSidebarBorder = true
+headingFontSizes = ["2.4rem", "1.8rem", "1.3rem", "1.1rem", "1rem", "0.9rem"]
+headingFontWeights = [700, 650, 600, 600, 600, 600]
 chartCategoricalColors = ["#8B5CF6", "#22D3EE", "#F472B6", "#FBBF24", "#34D399"]
 
 [browser]

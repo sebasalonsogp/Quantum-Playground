@@ -297,14 +297,14 @@ labels, and responsive behavior for a deliberate desktop-first portfolio present
 
 **Acceptance criteria:**
 
-- [ ] Primary action, result, explanation, and evidence have an obvious reading order.
-- [ ] Controls have clear labels, focus behavior, contrast, and non-color-only meaning.
-- [ ] Target desktop and narrow layouts have no clipped controls, unreadable labels, or chart overflow.
+- [x] Primary action, result, explanation, and evidence have an obvious reading order.
+- [x] Controls have clear labels, focus behavior, contrast, and non-color-only meaning.
+- [x] Target desktop and narrow layouts have no clipped controls, unreadable labels, or chart overflow.
 
 **Verification:**
 
-- [ ] Automated app and figure tests pass.
-- [ ] Real-browser review covers keyboard use, target desktop width, and a narrow viewport.
+- [x] Automated app and figure tests pass.
+- [x] Real-browser review covers keyboard use, target desktop width, and a narrow viewport.
 
 **Dependencies:** Task 10
 

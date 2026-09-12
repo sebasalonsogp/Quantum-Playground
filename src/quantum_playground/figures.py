@@ -332,6 +332,7 @@ def build_stationary_state_figure(
     )
 
     figure.update_layout(
+        autosize=True,
         height=720,
         paper_bgcolor=_BACKGROUND,
         plot_bgcolor=_BACKGROUND,
@@ -368,6 +369,7 @@ def build_stationary_state_figure(
         showline=True,
         linecolor=_MUTED,
         mirror=False,
+        automargin=True,
     )
     figure.update_yaxes(
         showgrid=True,
@@ -375,6 +377,7 @@ def build_stationary_state_figure(
         zeroline=False,
         showline=True,
         linecolor=_MUTED,
+        automargin=True,
     )
     figure.update_yaxes(
         title_text="Energy E",

@@ -40,6 +40,19 @@ def test_figure_coordinates_potential_levels_and_state_across_two_panels(well_re
     assert figure.layout.xaxis2.zeroline is False
 
 
+def test_figure_uses_responsive_margins_and_readable_axis_labels(well_result) -> None:
+    figure = build_stationary_state_figure(well_result)
+
+    assert figure.layout.autosize is True
+    assert figure.layout.xaxis.automargin is True
+    assert figure.layout.xaxis2.automargin is True
+    assert figure.layout.yaxis.automargin is True
+    assert figure.layout.yaxis2.automargin is True
+    assert figure.layout.xaxis2.title.text == "Position x"
+    assert figure.layout.yaxis.title.text == "Energy E"
+    assert figure.layout.yaxis2.title.text == "Wavefunction ψ(x)"
+
+
 def test_selected_state_has_text_and_line_style_not_just_color(well_result) -> None:
     figure = build_stationary_state_figure(well_result, state_index=2)
     energy_traces = figure.data[1 : 1 + well_result.config.eigenstate_count]

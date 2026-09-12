@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 import quantum_playground.validation as validation
@@ -32,6 +33,49 @@ def test_app_loads_with_project_identity() -> None:
         value.startswith(":green-badge[") and "Numerically verified" in value
         for value in (element.value for element in app.markdown)
     )
+
+
+def test_sidebar_state_adapts_to_narrow_viewports(monkeypatch) -> None:
+    page_config = {}
+    set_page_config = st.set_page_config
+
+    def capture_page_config(**kwargs) -> None:
+        page_config.update(kwargs)
+        set_page_config(**kwargs)
+
+    monkeypatch.setattr(st, "set_page_config", capture_page_config)
+
+    app = load_app()
+
+    assert not app.exception
+    assert page_config["initial_sidebar_state"] == "auto"
+
+
+def test_accessibility_hierarchy_matches_the_visual_reading_order() -> None:
+    app = load_app()
+
+    assert not app.exception
+    assert len(app.title) == 1
+    assert any(header.value == "Infinite square well" for header in app.header)
+    section_headings = [subheader.value for subheader in app.subheader]
+    assert section_headings.index("Live result") < section_headings.index(
+        "Reading the wavefunction"
+    )
+    assert any("update automatically" in caption.value for caption in app.caption)
+    assert app.toggle(key="show_density").label == "Show probability density"
+    assert app.button(key="reset_controls").label == "Reset experiment"
+
+
+def test_result_metrics_prioritize_decisions_without_diagnostic_overload() -> None:
+    app = load_app()
+
+    assert not app.exception
+    assert [metric.label for metric in app.metric] == [
+        "Selected energy E1",
+        "Analytic energy error",
+        "Solve time",
+    ]
+    assert all(metric.proto.show_border for metric in app.metric)
 
 
 def test_diagnostics_use_a_compact_signal_with_expandable_evidence() -> None:
@@ -157,7 +201,7 @@ def test_switching_to_harmonic_updates_controls_result_and_explanation() -> None
     slider_keys = {slider.key for slider in app.slider}
     assert "well_width" not in slider_keys
     assert "grid_points" not in slider_keys
-    assert any(subheader.value == "Harmonic oscillator" for subheader in app.subheader)
+    assert any(header.value == "Harmonic oscillator" for header in app.header)
     selected_energy = next(
         element.value for element in app.metric if element.label == "Selected energy E1"
     )

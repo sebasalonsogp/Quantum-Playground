@@ -32,7 +32,12 @@ uv run streamlit run app.py
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .
+uv run python scripts/benchmark_runtime.py
 ```
+
+The benchmark records uncached default and maximum-resolution solver paths plus initial, cached
+visual, and uncached physical-control reruns through Streamlit AppTest. It reports rather than
+enforces the timing budgets so slower machines produce evidence instead of flaky test failures.
 
 ## Architecture
 

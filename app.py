@@ -17,7 +17,7 @@ from quantum_playground.potentials import (
     create_harmonic_oscillator_config,
     create_infinite_well_config,
 )
-from quantum_playground.solver import solve
+from quantum_playground.solver import SolverError, solve
 from quantum_playground.validation import (
     MAX_NORMALIZATION_ERROR,
     MAX_ORTHOGONALITY_ERROR,
@@ -326,6 +326,13 @@ try:
         result = _run_simulation(config)
         if experiment is ExperimentId.DOUBLE_WELL and show_baseline:
             comparison_result = _run_simulation(create_double_well_config())
+except SolverError:
+    result_slot.error(
+        "The numerical solver could not complete this experiment. "
+        "Try resetting the experiment or moving the controls toward their defaults.",
+        icon=":material/error:",
+    )
+    st.stop()
 except ValueError as error:
     result_slot.error(
         f"The selected controls could not produce a valid simulation: {error}",

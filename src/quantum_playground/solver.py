@@ -110,12 +110,15 @@ def _lowest_eigenpairs(
 ) -> tuple[FloatArray, FloatArray]:
     starting_vector = np.linspace(1.0, 2.0, hamiltonian.shape[0], dtype=np.float64)
     try:
-        # ``SA`` selects the smallest algebraic eigenvalues of a real symmetric matrix.
+        # Every curated Hamiltonian is positive definite. Shift-invert therefore finds the
+        # eigenvalues nearest zero—the lowest physical energies—without slowly traversing
+        # the high-energy end of the spectrum.
         # Source: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigsh.html
         energies, eigenvectors = eigsh(
             hamiltonian,
             k=state_count,
-            which="SA",
+            sigma=0.0,
+            which="LM",
             v0=starting_vector,
         )
     except ArpackNoConvergence as error:

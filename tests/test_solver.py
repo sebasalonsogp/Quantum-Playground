@@ -4,7 +4,11 @@ from scipy.sparse import csr_array
 from scipy.sparse.linalg import ArpackError, ArpackNoConvergence
 
 from quantum_playground.models import ExperimentId, SimulationConfig
-from quantum_playground.potentials import create_double_well_config, create_infinite_well_config
+from quantum_playground.potentials import (
+    create_double_well_config,
+    create_harmonic_oscillator_config,
+    create_infinite_well_config,
+)
 from quantum_playground.solver import (
     SolverError,
     build_hamiltonian,
@@ -156,6 +160,47 @@ def test_default_infinite_well_solve_is_complete_and_finite() -> None:
     assert result.wavefunctions.shape == (6, 801)
     assert np.all(np.isfinite(result.energies))
     assert np.all(np.isfinite(result.wavefunctions))
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        create_infinite_well_config(width=0.5, grid_points=1_201),
+        create_infinite_well_config(width=2.0, grid_points=1_201),
+        create_harmonic_oscillator_config(omega=0.5, grid_points=1_601),
+        create_harmonic_oscillator_config(omega=2.0, grid_points=1_601),
+        create_double_well_config(
+            barrier_height=2.5,
+            well_separation=2.0,
+            grid_points=1_601,
+        ),
+        create_double_well_config(
+            barrier_height=8.0,
+            well_separation=4.0,
+            grid_points=1_601,
+        ),
+    ],
+    ids=(
+        "narrow-infinite-well",
+        "wide-infinite-well",
+        "low-frequency-oscillator",
+        "high-frequency-oscillator",
+        "low-close-double-well",
+        "high-separated-double-well",
+    ),
+)
+def test_extreme_allowed_controls_produce_complete_finite_results(
+    config: SimulationConfig,
+) -> None:
+    result = solve(config)
+
+    assert result.config == config
+    assert result.wavefunctions.shape == (config.eigenstate_count, config.grid_points)
+    assert np.all(np.isfinite(result.energies))
+    assert np.all(np.isfinite(result.wavefunctions))
+    assert np.max(result.diagnostics.residual_norms) < 1e-8
+    assert np.max(result.diagnostics.normalization_errors) < 1e-12
+    assert result.diagnostics.orthogonality_error < 1e-10
 
 
 def test_default_double_well_has_low_even_odd_tunneling_partners() -> None:

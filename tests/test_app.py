@@ -4,6 +4,7 @@ import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
+import quantum_playground.solver as solver
 import quantum_playground.validation as validation
 
 APP_PATH = Path(__file__).parents[1] / "app.py"
@@ -189,6 +190,75 @@ def test_state_selection_and_density_toggle_update_the_explanation() -> None:
     assert any(element.label == "Selected energy E4" for element in app.metric)
     assert any("3 internal nodes" in element.value for element in app.markdown)
     assert any("probability density" in element.value.lower() for element in app.markdown)
+
+
+def test_bounded_cache_reuses_stable_config_and_recomputes_physical_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache_data = st.cache_data
+    cache_options: list[dict[str, object]] = []
+    solve_calls = 0
+    real_solve = solver.solve
+
+    def capture_cache_options(*args: object, **kwargs: object):
+        cache_options.append(kwargs)
+        return cache_data(*args, **kwargs)
+
+    def count_solve_calls(config):
+        nonlocal solve_calls
+        solve_calls += 1
+        return real_solve(config)
+
+    cache_data.clear()
+    monkeypatch.setattr(st, "cache_data", capture_cache_options)
+    monkeypatch.setattr(solver, "solve", count_solve_calls)
+
+    try:
+        app = load_app()
+        assert solve_calls == 1
+
+        app.slider(key="state_number").set_value(2).run()
+        app.toggle(key="show_density").set_value(True).run()
+
+        assert not app.exception
+        assert solve_calls == 1
+
+        app.slider(key="well_width").set_value(1.1).run()
+
+        assert not app.exception
+        assert solve_calls == 2
+        assert cache_options
+        assert {options["max_entries"] for options in cache_options} == {16}
+    finally:
+        cache_data.clear()
+
+
+def test_solver_failure_replaces_results_with_actionable_feedback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache_data = st.cache_data
+    cache_data.clear()
+    app = load_app()
+    assert app.metric
+    assert app.get("plotly_chart")
+
+    def fail_to_solve(*args: object, **kwargs: object) -> None:
+        raise solver.SolverError("stationary-state solve did not converge")
+
+    monkeypatch.setattr(solver, "solve", fail_to_solve)
+    cache_data.clear()
+
+    try:
+        app.slider(key="well_width").set_value(1.1).run()
+
+        assert not app.exception
+        assert len(app.error) == 1
+        assert "Try resetting the experiment" in app.error[0].value
+        assert not app.metric
+        assert not app.get("plotly_chart")
+        assert not app.status
+    finally:
+        cache_data.clear()
 
 
 def test_switching_to_harmonic_updates_controls_result_and_explanation() -> None:

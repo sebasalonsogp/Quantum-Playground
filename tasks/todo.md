@@ -320,14 +320,29 @@ helps, and verify that extreme allowed inputs or eigensolver failures produce ac
 
 **Acceptance criteria:**
 
-- [ ] Representative local solves are approximately 250 ms or less, or the measured exception is documented.
-- [ ] Typical hosted-style interactions are designed to complete in under one second.
-- [ ] Cache keys are stable, cache growth is bounded, and failures do not leave stale results visible.
+- [x] Representative local solves are approximately 250 ms or less, or the measured exception is documented.
+- [x] Typical hosted-style interactions are designed to complete in under one second.
+- [x] Cache keys are stable, cache growth is bounded, and failures do not leave stale results visible.
 
 **Verification:**
 
-- [ ] Focused numerical and app failure tests pass.
-- [ ] A repeatable timing script or test records representative cold and warm paths.
+- [x] Focused numerical and app failure tests pass.
+- [x] A repeatable timing script or test records representative cold and warm paths.
+
+**Recorded performance (2026-09-11):** Five-sample local Windows runs with CPython 3.12 use
+`uv run python scripts/benchmark_runtime.py`. Shift-invert targeting reduced representative solver
+medians from `91.7–536.8 ms` to `1.9–6.4 ms`; the post-change maximum across all default and
+maximum-resolution cases was `11.0 ms`. Streamlit AppTest recorded a `659.7 ms` initial render,
+`58.9 ms` median (`97.4 ms` maximum) cached visual reruns, and `62.9 ms` median (`65.9 ms`
+maximum) uncached physical-control reruns. The benchmark reports budgets without creating flaky
+timing assertions.
+
+**Recorded resilience evidence (2026-09-11):** App tests prove that display-only controls reuse a
+stable `SimulationConfig` cache key, physical changes recompute, the cache is bounded to 16 entries,
+and a forced `SolverError` replaces metrics, charts, and diagnostics with recovery guidance. Solver
+tests cover maximum-resolution parameter extremes for every experiment. A real-browser journey used
+keyboard controls, changed the flagship split from `0.068624` to `0.000758` at `V0 = 8.0` and
+`d = 4.0`, expanded passing diagnostics, and reset cleanly with no console errors.
 
 **Dependencies:** Task 11
 
@@ -338,9 +353,14 @@ helps, and verify that extreme allowed inputs or eigensolver failures produce ac
 
 ### Checkpoint D: Release candidate
 
-- [ ] Full test, lint, format, and build checks pass.
-- [ ] Performance measurements meet or explicitly explain the product budgets.
-- [ ] The two-minute journey passes a fresh-user review with no coaching.
+- [x] Full test, lint, format, and build checks pass.
+- [x] Performance measurements meet or explicitly explain the product budgets.
+- [x] The two-minute journey passes a fresh-user review with no coaching.
+
+**Recorded evidence (2026-09-11):** `128` tests passed; Ruff lint and format checks passed; the
+source distribution and wheel built successfully. The uncached and cached runtime measurements met
+their respective `250 ms` and `1 s` budgets, and the direct flagship browser journey completed in
+under two minutes without coaching.
 
 ## Phase 5: Portfolio delivery
 

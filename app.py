@@ -23,6 +23,7 @@ from quantum_playground.validation import (
     MAX_ORTHOGONALITY_ERROR,
     MAX_RELATIVE_RESIDUAL,
     ValidationReport,
+    assess_infinite_well_convergence,
     validate_harmonic_oscillator,
     validate_infinite_well,
 )
@@ -51,6 +52,7 @@ _DYNAMIC_CONTROL_KEYS = (
     "double_well_separation",
     "show_baseline",
 )
+_CONVERGENCE_GRID_POINTS = (201, 401, 801)
 
 
 def _saved_control_key(key: str) -> str:
@@ -90,13 +92,65 @@ def _validate_result(result: SimulationResult) -> ValidationReport | None:
     raise ValueError(f"no validation pipeline for {result.config.experiment.value!r}")
 
 
-def _numerical_checks_pass(result: SimulationResult) -> bool:
-    diagnostics = result.diagnostics
-    return (
-        float(max(diagnostics.residual_norms)) <= MAX_RELATIVE_RESIDUAL
-        and float(max(diagnostics.normalization_errors)) <= MAX_NORMALIZATION_ERROR
-        and diagnostics.orthogonality_error <= MAX_ORTHOGONALITY_ERROR
+def _diagnostic_checks(
+    result: SimulationResult,
+    report: ValidationReport | None,
+) -> list[tuple[str, float, float, bool]]:
+    if report is None:
+        diagnostics = result.diagnostics
+        residual = float(max(diagnostics.residual_norms))
+        normalization = float(max(diagnostics.normalization_errors))
+        orthogonality = diagnostics.orthogonality_error
+        checks = []
+    else:
+        residual = report.maximum_relative_residual
+        normalization = report.maximum_normalization_error
+        orthogonality = report.orthogonality_error
+        checks = [
+            (
+                "Analytic energy",
+                report.maximum_relative_energy_error,
+                report.relative_energy_tolerance,
+                report.energy_accurate,
+            )
+        ]
+
+    checks.extend(
+        (
+            (
+                "Eigenpair residual",
+                residual,
+                MAX_RELATIVE_RESIDUAL,
+                residual <= MAX_RELATIVE_RESIDUAL,
+            ),
+            (
+                "Wavefunction normalization",
+                normalization,
+                MAX_NORMALIZATION_ERROR,
+                normalization <= MAX_NORMALIZATION_ERROR,
+            ),
+            (
+                "State orthogonality",
+                orthogonality,
+                MAX_ORTHOGONALITY_ERROR,
+                orthogonality <= MAX_ORTHOGONALITY_ERROR,
+            ),
+        )
     )
+    return checks
+
+
+def _diagnostic_evidence(
+    checks: list[tuple[str, float, float, bool]],
+) -> dict[str, list[str]]:
+    return {
+        "Check": [label for label, _, _, _ in checks],
+        "Observed": [f"{observed:.2e}" for _, observed, _, _ in checks],
+        "Limit": [f"≤ {limit:.1e}" for _, _, limit, _ in checks],
+        "Status": [
+            ":green-badge[Pass]" if passed else ":red-badge[Fail]" for _, _, _, passed in checks
+        ],
+    }
 
 
 st.set_page_config(
@@ -275,6 +329,7 @@ except ValueError as error:
     st.stop()
 
 report = _validate_result(result)
+diagnostic_checks = _diagnostic_checks(result, report)
 selected_index = int(state_number) - 1
 quantity = StateQuantity.PROBABILITY_DENSITY if show_density else StateQuantity.WAVEFUNCTION
 
@@ -352,22 +407,28 @@ with result_slot:
             f"d = {WELL_SEPARATION.default:.1f} (ΔE₀₁ = {reference_splitting:.6f}). Dashed "
             "potential and dotted energy levels stay fixed while solid traces follow your controls."
         )
-    result_passed = report.passed if report is not None else _numerical_checks_pass(result)
+    result_passed = all(passed for _, _, _, passed in diagnostic_checks)
     if result_passed:
-        validation_message = (
-            "Validation passed — analytic energies, residuals, normalization, and orthogonality "
-            "all meet the documented tolerances."
-            if report is not None
-            else "Numerical checks passed — residuals, normalization, and orthogonality all meet "
-            "the documented tolerances."
-        )
-        st.success(
-            validation_message,
+        st.badge(
+            "Numerically verified",
             icon=":material/verified:",
+            color="green",
+            help="All applicable checks are within the documented limits.",
+        )
+        st.caption(
+            "Analytic agreement and numerical consistency checks passed."
+            if report is not None
+            else "Residual, normalization, and orthogonality checks passed."
         )
     else:
+        st.badge(
+            "Verification failed",
+            icon=":material/error:",
+            color="red",
+        )
         st.error(
-            "This result did not pass every numerical validation check. Inspect the details below.",
+            "Do not treat this result as validated. At least one numerical check exceeds its "
+            "documented limit; inspect Numerical details below.",
             icon=":material/error:",
         )
 
@@ -407,6 +468,7 @@ with st.container(border=True):
         )
 
 with st.expander("Numerical details", icon=":material/functions:"):
+    st.markdown("**Method and discretization**")
     st.markdown(
         "A second-order centered finite difference represents the kinetic-energy operator, and "
         "SciPy solves the resulting real symmetric sparse eigenproblem."
@@ -414,27 +476,35 @@ with st.expander("Numerical details", icon=":material/functions:"):
     st.latex(r"-\frac{1}{2}\frac{d^2\psi}{dx^2} + V(x)\psi = E\psi")
     if experiment is ExperimentId.INFINITE_WELL:
         st.latex(r"V(x)=0,\qquad E_n=\frac{\pi^2 n^2}{2L^2},\quad n=1,2,\ldots")
-        st.caption("Dimensionless convention: ℏ = m = 1. Boundary condition: ψ = 0 at both walls.")
+        boundary_description = "ψ = 0 at both walls"
         state_labels = [f"n = {index}" for index in range(1, result.config.eigenstate_count + 1)]
     elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
         st.latex(r"V(x)=\frac{1}{2}\omega^2x^2,\qquad E_n=\omega(n+\tfrac{1}{2})")
-        st.caption(
-            "Dimensionless convention: ℏ = m = 1. The unbounded oscillator is approximated on "
-            "x ∈ [−8, 8] with ψ = 0 at both endpoints."
+        boundary_description = (
+            "finite-domain approximation on x ∈ [−8, 8], with ψ = 0 at both endpoints"
         )
         state_labels = [
             f"n = {index} (state {index + 1})" for index in range(result.config.eigenstate_count)
         ]
     else:
         st.latex(r"V(x)=V_0\left[\left(\frac{2x}{d}\right)^2-1\right]^2")
-        st.caption(
-            "Dimensionless convention: ℏ = m = 1. The minima lie at x = ±d/2 and the central "
-            "barrier is V(0) = V₀; ψ = 0 at x = ±6."
-        )
+        boundary_description = "finite domain x ∈ [−6, 6], with ψ = 0 at both endpoints"
         state_labels = [
             f"state {index + 1} · {'even' if index % 2 == 0 else 'odd'}"
             for index in range(result.config.eigenstate_count)
         ]
+    grid_spacing = float(result.x[1] - result.x[0])
+    st.caption(
+        f"Grid: {result.config.grid_points:,} points with Δx = {grid_spacing:.3e}. "
+        f"Dimensionless units: ℏ = m = 1. Boundary: {boundary_description}."
+    )
+    if experiment is ExperimentId.DOUBLE_WELL:
+        st.caption("The minima lie at x = ±d/2 and the central barrier is V(0) = V₀.")
+
+    st.markdown("**Current-run checks**")
+    st.table(_diagnostic_evidence(diagnostic_checks), border="horizontal")
+
+    st.markdown("**Energy spectrum**")
     if report is not None:
         st.table(
             {
@@ -442,11 +512,8 @@ with st.expander("Numerical details", icon=":material/functions:"):
                 "Numerical E": [f"{energy:.7f}" for energy in result.energies],
                 "Exact E": [f"{energy:.7f}" for energy in report.analytic_energies],
                 "Relative error": [f"{error:.2e}" for error in report.relative_energy_errors],
-            }
-        )
-        st.caption(
-            f"Validation limits: energy error ≤ {report.relative_energy_tolerance:.1e}, residual ≤ "
-            "1e−8, normalization and orthogonality errors ≤ 1e−12."
+            },
+            border="horizontal",
         )
     else:
         gaps = ["—", *(f"{gap:.7f}" for gap in result.energies[1:] - result.energies[:-1])]
@@ -455,11 +522,65 @@ with st.expander("Numerical details", icon=":material/functions:"):
                 "State and parity": state_labels,
                 "Numerical E": [f"{energy:.7f}" for energy in result.energies],
                 "Gap from previous": gaps,
-            }
+            },
+            border="horizontal",
         )
         st.caption(
-            "No elementary exact spectrum is used for this potential. Numerical limits: residual "
-            "≤ 1e−8, normalization and orthogonality errors ≤ 1e−12."
+            "No elementary exact spectrum is used for this potential, so the app makes no analytic "
+            "accuracy claim for these energies."
         )
+
+    if experiment is ExperimentId.INFINITE_WELL:
+        st.markdown("**Grid-refinement check**")
+        st.caption(
+            "Run the ground state on three successively finer grids. A second-order finite "
+            "difference should reduce energy error at an observed order near 2."
+        )
+        if st.button(
+            "Run convergence check",
+            key="run_convergence",
+            icon=":material/query_stats:",
+        ):
+            with st.spinner("Running three-grid convergence check…"):
+                convergence_results = tuple(
+                    _run_simulation(
+                        create_infinite_well_config(
+                            width=float(well_width),
+                            grid_points=grid_points,
+                            eigenstate_count=1,
+                        )
+                    )
+                    for grid_points in _CONVERGENCE_GRID_POINTS
+                )
+                convergence = assess_infinite_well_convergence(convergence_results)
+            if convergence.passed:
+                st.badge(
+                    "Second-order convergence confirmed",
+                    icon=":material/verified:",
+                    color="green",
+                )
+            else:
+                st.badge(
+                    "Convergence check failed",
+                    icon=":material/error:",
+                    color="red",
+                )
+                st.error(
+                    "The refinement study did not show decreasing error at the expected order.",
+                    icon=":material/error:",
+                )
+            st.table(
+                {
+                    "Grid points": list(_CONVERGENCE_GRID_POINTS),
+                    "Relative ground-state error": [
+                        f"{error:.2e}" for error in convergence.relative_energy_errors
+                    ],
+                    "Observed order": [
+                        "—",
+                        *(f"{order:.2f}" for order in convergence.observed_orders),
+                    ],
+                },
+                border="horizontal",
+            )
 
 st.caption(f"Quantum Playground v{__version__} · Python, NumPy, SciPy, Plotly, and Streamlit")

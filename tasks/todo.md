@@ -275,14 +275,14 @@ normalization, orthogonality, convergence evidence, units, and method details on
 
 **Acceptance criteria:**
 
-- [ ] The main view communicates validity without overwhelming a non-specialist.
-- [ ] Expandable details expose numerical method, grid, boundaries, tolerances, and diagnostics.
-- [ ] Failed diagnostics are visible and never silently presented as trustworthy results.
+- [x] The main view communicates validity without overwhelming a non-specialist.
+- [x] Expandable details expose numerical method, grid, boundaries, tolerances, and diagnostics.
+- [x] Failed diagnostics are visible and never silently presented as trustworthy results.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_app.py -k diagnostics`
-- [ ] Manual check: compare the collapsed and expanded journeys for clarity.
+- [x] Focused tests: `uv run pytest tests/test_app.py -k diagnostics`
+- [x] Manual check: compare the collapsed and expanded journeys for clarity.
 
 **Dependencies:** Checkpoint C
 

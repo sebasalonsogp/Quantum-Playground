@@ -3,12 +3,18 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
+import quantum_playground.validation as validation
+
 APP_PATH = Path(__file__).parents[1] / "app.py"
 DEFAULT_TIMEOUT = 10
 
 
 def load_app() -> AppTest:
     return AppTest.from_file(APP_PATH, default_timeout=DEFAULT_TIMEOUT).run()
+
+
+def diagnostics_table(app: AppTest):
+    return next(table.value for table in app.table if "Observed" in table.value.columns)
 
 
 def test_app_loads_with_project_identity() -> None:
@@ -22,7 +28,94 @@ def test_app_loads_with_project_identity() -> None:
     assert app.slider(key="state_number").value == 1
     assert app.toggle(key="show_density").value is False
     assert any(element.label == "Selected energy E1" for element in app.metric)
-    assert app.success
+    assert any(
+        value.startswith(":green-badge[") and "Numerically verified" in value
+        for value in (element.value for element in app.markdown)
+    )
+
+
+def test_diagnostics_use_a_compact_signal_with_expandable_evidence() -> None:
+    app = load_app()
+
+    assert not app.exception
+    assert not app.success
+    assert any(status.label == "Numerical details" for status in app.status)
+    assert any("second-order centered finite difference" in item.value for item in app.markdown)
+    assert any(
+        "Grid: 801 points" in caption.value and "Δx" in caption.value for caption in app.caption
+    )
+
+    evidence = diagnostics_table(app)
+    assert evidence["Check"].tolist() == [
+        "Analytic energy",
+        "Eigenpair residual",
+        "Wavefunction normalization",
+        "State orthogonality",
+    ]
+    assert evidence["Status"].tolist() == [":green-badge[Pass]"] * 4
+    assert evidence["Observed"].str.match(r"\d\.\d\de[+-]\d\d").all()
+    assert evidence["Limit"].str.startswith("≤ ").all()
+
+
+def test_diagnostics_offer_on_demand_convergence_evidence() -> None:
+    app = load_app()
+
+    app.button(key="run_convergence").click().run()
+
+    assert not app.exception
+    assert any(
+        value.startswith(":green-badge[") and "Second-order convergence confirmed" in value
+        for value in (element.value for element in app.markdown)
+    )
+    convergence = next(table.value for table in app.table if "Grid points" in table.value.columns)
+    assert convergence["Grid points"].tolist() == [201, 401, 801]
+    assert convergence["Observed order"].tolist()[0] == "—"
+    assert all(
+        float(order) == pytest.approx(2.0, abs=0.01) for order in convergence["Observed order"][1:]
+    )
+
+
+def test_failed_diagnostics_are_visibly_marked_untrustworthy(monkeypatch) -> None:
+    original_validate = validation.validate_infinite_well
+
+    def fail_residual_check(result):
+        report = original_validate(result)
+        return validation.ValidationReport(
+            analytic_energies=report.analytic_energies,
+            relative_energy_errors=report.relative_energy_errors,
+            maximum_relative_residual=10 * validation.MAX_RELATIVE_RESIDUAL,
+            maximum_normalization_error=report.maximum_normalization_error,
+            orthogonality_error=report.orthogonality_error,
+            relative_energy_tolerance=report.relative_energy_tolerance,
+        )
+
+    monkeypatch.setattr(validation, "validate_infinite_well", fail_residual_check)
+    app = load_app()
+
+    assert not app.exception
+    assert any(
+        value.startswith(":red-badge[") and "Verification failed" in value
+        for value in (element.value for element in app.markdown)
+    )
+    assert any("Do not treat this result as validated" in error.value for error in app.error)
+    evidence = diagnostics_table(app)
+    residual = evidence.loc[evidence["Check"] == "Eigenpair residual"].iloc[0]
+    assert residual["Status"] == ":red-badge[Fail]"
+
+
+def test_double_well_diagnostics_expose_numerical_checks_without_an_exact_claim() -> None:
+    app = load_app()
+    app.selectbox(key="experiment").set_value("Symmetric double well").run()
+
+    assert not app.exception
+    evidence = diagnostics_table(app)
+    assert evidence["Check"].tolist() == [
+        "Eigenpair residual",
+        "Wavefunction normalization",
+        "State orthogonality",
+    ]
+    assert evidence["Status"].tolist() == [":green-badge[Pass]"] * 3
+    assert any("No elementary exact spectrum" in caption.value for caption in app.caption)
 
 
 def test_resolution_control_recomputes_the_shared_simulation() -> None:

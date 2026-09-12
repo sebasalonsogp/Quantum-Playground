@@ -367,6 +367,7 @@ def build_stationary_state_figure(
             "t": 146 if comparison_result is not None else 120,
             "b": 56,
         },
+        dragmode=False,
         hovermode="closest",
         meta=metadata,
     )
@@ -569,6 +570,7 @@ def build_tunneling_motion_figure(
             "font": {"size": 11},
         },
         margin={"l": 72, "r": 48, "t": 132, "b": 64},
+        dragmode=False,
         hovermode="closest",
         meta={
             "energy_splitting": splitting,

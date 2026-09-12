@@ -50,6 +50,24 @@ _DEFAULT_CONTROLS = {
     "state_number": 1,
     "show_density": False,
 }
+_PLOTLY_CONFIG = {
+    "displaylogo": False,
+    "scrollZoom": False,
+    "doubleClick": False,
+    "responsive": True,
+    "showAxisDragHandles": False,
+    "showAxisRangeEntryBoxes": False,
+    "modeBarButtonsToRemove": [
+        "zoom2d",
+        "pan2d",
+        "select2d",
+        "lasso2d",
+        "zoomIn2d",
+        "zoomOut2d",
+        "autoScale2d",
+        "resetScale2d",
+    ],
+}
 _DYNAMIC_CONTROL_KEYS = (
     "well_width",
     "grid_points",
@@ -487,7 +505,7 @@ with result_slot:
         key="tunneling_motion_figure" if is_tunneling_motion else "stationary_state_figure",
         width="stretch",
         theme=None,
-        config={"displaylogo": False, "scrollZoom": False, "responsive": True},
+        config=_PLOTLY_CONFIG,
     )
     if experiment is ExperimentId.INFINITE_WELL:
         simulation_summary = rf"across a width $L = {well_width:.1f}$"

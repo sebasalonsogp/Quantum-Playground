@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 
@@ -46,6 +47,27 @@ def test_app_loads_with_project_identity() -> None:
         "https://github.com/sebasalonsogp/Quantum-Playground" in element.value
         for element in app.caption
     )
+
+
+def test_chart_disables_zoom_and_selection_controls() -> None:
+    app = load_app()
+
+    chart = app.get("plotly_chart")[0]
+    config = json.loads(chart.proto.config)
+    removed_buttons = set(config["modeBarButtonsToRemove"])
+
+    assert config["scrollZoom"] is False
+    assert config["doubleClick"] is False
+    assert {
+        "zoom2d",
+        "pan2d",
+        "select2d",
+        "lasso2d",
+        "zoomIn2d",
+        "zoomOut2d",
+        "autoScale2d",
+        "resetScale2d",
+    } <= removed_buttons
 
 
 def test_sidebar_state_adapts_to_narrow_viewports(monkeypatch) -> None:

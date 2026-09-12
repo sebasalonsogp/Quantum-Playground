@@ -6,6 +6,10 @@
 An interactive scientific-computing showcase for exploring how one-dimensional potential-energy
 landscapes determine quantum energy levels, wavefunctions, and probability densities.
 
+Inspired by quantum-mechanics topics from my physics classes, I built Quantum Playground to turn
+those ideas into an interactive experience while demonstrating scientific computing, numerical
+methods, and software engineering.
+
 [![Quantum Playground showing a verified infinite-well simulation](assets/quantum-playground-demo.png)](https://quantum-playground-app.streamlit.app)
 
 ## Try the flagship interaction

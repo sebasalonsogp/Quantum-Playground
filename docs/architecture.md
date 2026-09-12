@@ -176,6 +176,12 @@ potential, energy levels, wavefunctions, and probability densities share axes an
 Client-side Plotly frames may animate precomputed states; repeated server-side solves should not be
 used as a high-frame-rate animation loop.
 
+The double-well view may pass a second immutable `SimulationResult` into the same figure builder as
+comparison context. That result is always the cached default preset: its potential and two lowest
+energy levels remain visually muted and fixed while the current solid traces respond to controls.
+Turning comparison off removes both the reference traces and its metric delta; it never creates a
+second solver or visualization path.
+
 ## Testing
 
 - Unit-test potentials, eigenpair ordering, normalization, orthogonality, residuals, analytic error,

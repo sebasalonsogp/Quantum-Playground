@@ -237,14 +237,21 @@ explanation.
 
 **Acceptance criteria:**
 
-- [ ] One or two bounded controls create an obvious and interpretable change in the lowest states.
-- [ ] The current result can be compared with a stable default baseline without rerun confusion.
-- [ ] State selection, density toggle, comparison, and reset survive experiment switching correctly.
+- [x] One or two bounded controls create an obvious and interpretable change in the lowest states.
+- [x] The current result can be compared with a stable default baseline without rerun confusion.
+- [x] State selection, density toggle, comparison, and reset survive experiment switching correctly.
 
 **Verification:**
 
-- [ ] Focused tests: `uv run pytest tests/test_app.py -k double_well`
-- [ ] Manual check: complete and narrate the flagship interaction in under two minutes.
+- [x] Focused tests: `uv run pytest tests/test_app.py -k double_well`
+- [x] Manual check: complete and narrate the flagship interaction in under two minutes.
+
+**Recorded evidence (2026-09-11):** At a 985 × 983 browser viewport, the direct journey changed
+the default splitting from `0.068624` to `0.000758` (`-98.9%`) at `V0 = 8.0` and `d = 4.0`,
+selected the odd second state, switched to probability density, removed the fixed comparison, and
+restored every default. Solid current traces and muted reference traces remained distinguishable,
+the chart title and legend did not overlap, all controls exposed accessible names, and the browser
+console remained clean. The interaction requires seven direct actions and fits a two-minute demo.
 
 **Dependencies:** Task 8
 
@@ -255,9 +262,9 @@ explanation.
 
 ### Checkpoint C: Complete scientific MVP
 
-- [ ] All three experiments use one configuration-to-result path.
-- [ ] Scientific tests and critical multi-experiment app flows pass.
-- [ ] The double well is clearly the deepest and most memorable experience.
+- [x] All three experiments use one configuration-to-result path.
+- [x] Scientific tests and critical multi-experiment app flows pass.
+- [x] The double well is clearly the deepest and most memorable experience.
 
 ## Phase 4: Product polish and engineering hardening
 

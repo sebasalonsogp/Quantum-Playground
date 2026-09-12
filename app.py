@@ -6,15 +6,22 @@ from quantum_playground import __version__
 from quantum_playground.figures import StateQuantity, build_stationary_state_figure
 from quantum_playground.models import ExperimentId, SimulationConfig, SimulationResult
 from quantum_playground.potentials import (
+    BARRIER_HEIGHT,
+    DOUBLE_WELL_PRESET,
     HARMONIC_OSCILLATOR_PRESET,
     INFINITE_WELL_PRESET,
     OMEGA,
+    WELL_SEPARATION,
     WIDTH,
+    create_double_well_config,
     create_harmonic_oscillator_config,
     create_infinite_well_config,
 )
 from quantum_playground.solver import solve
 from quantum_playground.validation import (
+    MAX_NORMALIZATION_ERROR,
+    MAX_ORTHOGONALITY_ERROR,
+    MAX_RELATIVE_RESIDUAL,
     ValidationReport,
     validate_harmonic_oscillator,
     validate_infinite_well,
@@ -23,16 +30,27 @@ from quantum_playground.validation import (
 _EXPERIMENTS = {
     INFINITE_WELL_PRESET.title: ExperimentId.INFINITE_WELL,
     HARMONIC_OSCILLATOR_PRESET.title: ExperimentId.HARMONIC_OSCILLATOR,
+    DOUBLE_WELL_PRESET.title: ExperimentId.DOUBLE_WELL,
 }
 
 _DEFAULT_CONTROLS = {
     "well_width": WIDTH.default,
     "grid_points": INFINITE_WELL_PRESET.default_grid_points,
     "oscillator_omega": OMEGA.default,
+    "double_well_barrier_height": BARRIER_HEIGHT.default,
+    "double_well_separation": WELL_SEPARATION.default,
+    "show_baseline": True,
     "state_number": 1,
     "show_density": False,
 }
-_DYNAMIC_CONTROL_KEYS = ("well_width", "grid_points", "oscillator_omega")
+_DYNAMIC_CONTROL_KEYS = (
+    "well_width",
+    "grid_points",
+    "oscillator_omega",
+    "double_well_barrier_height",
+    "double_well_separation",
+    "show_baseline",
+)
 
 
 def _saved_control_key(key: str) -> str:
@@ -62,12 +80,23 @@ def _run_simulation(config: SimulationConfig) -> SimulationResult:
     return solve(config)
 
 
-def _validate_result(result: SimulationResult) -> ValidationReport:
+def _validate_result(result: SimulationResult) -> ValidationReport | None:
     if result.config.experiment is ExperimentId.INFINITE_WELL:
         return validate_infinite_well(result)
     if result.config.experiment is ExperimentId.HARMONIC_OSCILLATOR:
         return validate_harmonic_oscillator(result)
+    if result.config.experiment is ExperimentId.DOUBLE_WELL:
+        return None
     raise ValueError(f"no validation pipeline for {result.config.experiment.value!r}")
+
+
+def _numerical_checks_pass(result: SimulationResult) -> bool:
+    diagnostics = result.diagnostics
+    return (
+        float(max(diagnostics.residual_norms)) <= MAX_RELATIVE_RESIDUAL
+        and float(max(diagnostics.normalization_errors)) <= MAX_NORMALIZATION_ERROR
+        and diagnostics.orthogonality_error <= MAX_ORTHOGONALITY_ERROR
+    )
 
 
 st.set_page_config(
@@ -119,7 +148,7 @@ with st.sidebar:
             width=float(well_width),
             grid_points=int(grid_points),
         )
-    else:
+    elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
         _load_dynamic_control("oscillator_omega")
         oscillator_omega = st.slider(
             OMEGA.label,
@@ -133,6 +162,34 @@ with st.sidebar:
         )
         config = create_harmonic_oscillator_config(omega=float(oscillator_omega))
         st.caption("Uses a fixed, validated domain and resolution so frequency stays the focus.")
+    else:
+        _load_dynamic_control("double_well_barrier_height")
+        double_well_barrier_height = st.slider(
+            BARRIER_HEIGHT.label,
+            min_value=BARRIER_HEIGHT.minimum,
+            max_value=BARRIER_HEIGHT.maximum,
+            step=BARRIER_HEIGHT.step,
+            key="double_well_barrier_height",
+            help=BARRIER_HEIGHT.help_text,
+            on_change=_store_dynamic_control,
+            args=("double_well_barrier_height",),
+        )
+        _load_dynamic_control("double_well_separation")
+        double_well_separation = st.slider(
+            WELL_SEPARATION.label,
+            min_value=WELL_SEPARATION.minimum,
+            max_value=WELL_SEPARATION.maximum,
+            step=WELL_SEPARATION.step,
+            key="double_well_separation",
+            help=WELL_SEPARATION.help_text,
+            on_change=_store_dynamic_control,
+            args=("double_well_separation",),
+        )
+        config = create_double_well_config(
+            barrier_height=float(double_well_barrier_height),
+            well_separation=float(double_well_separation),
+        )
+        st.caption("The fixed domain and resolution keep both low states below the barrier.")
     st.button(
         "Reset experiment",
         key="reset_controls",
@@ -155,18 +212,25 @@ if experiment is ExperimentId.INFINITE_WELL:
         "energy level move downward."
     )
     state_help = "State n has n − 1 internal nodes and an energy proportional to n²."
-else:
+elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
     preset = HARMONIC_OSCILLATOR_PRESET
     try_this = (
         "Raise ω and watch the evenly spaced energy ladder expand while the state contracts "
         "toward the center."
     )
     state_help = "Displayed state k corresponds to oscillator quantum number n = k − 1."
+else:
+    preset = DOUBLE_WELL_PRESET
+    try_this = (
+        "Raise either control and watch ΔE₀₁ collapse as the lowest tunneling pair becomes "
+        "nearly degenerate."
+    )
+    state_help = "States 1 and 2 are the even/odd tunneling pair; higher states add nodes."
 
 st.subheader(preset.title)
 st.markdown(f"{preset.description} **Try this:** {try_this}")
 
-control_columns = st.columns((3, 2), vertical_alignment="bottom")
+control_columns = st.columns((3, 2, 2), vertical_alignment="bottom")
 with control_columns[0]:
     state_number = st.slider(
         "Quantum state",
@@ -182,12 +246,27 @@ with control_columns[1]:
         key="show_density",
         help="Switch from the signed wavefunction ψ(x) to the measurable density |ψ(x)|².",
     )
+with control_columns[2]:
+    if experiment is ExperimentId.DOUBLE_WELL:
+        _load_dynamic_control("show_baseline")
+        show_baseline = st.toggle(
+            "Compare with default",
+            key="show_baseline",
+            help="Hold the default potential and lowest pair fixed behind the current result.",
+            on_change=_store_dynamic_control,
+            args=("show_baseline",),
+        )
+    else:
+        show_baseline = False
 
 result_slot = st.container()
+comparison_result = None
 
 try:
     with result_slot, st.spinner("Solving the stationary Schrödinger equation…"):
         result = _run_simulation(config)
+        if experiment is ExperimentId.DOUBLE_WELL and show_baseline:
+            comparison_result = _run_simulation(create_double_well_config())
 except ValueError as error:
     result_slot.error(
         f"The selected controls could not produce a valid simulation: {error}",
@@ -200,25 +279,50 @@ selected_index = int(state_number) - 1
 quantity = StateQuantity.PROBABILITY_DENSITY if show_density else StateQuantity.WAVEFUNCTION
 
 with result_slot:
-    metric_columns = st.columns(4)
-    metric_columns[0].metric(
-        f"Selected energy E{state_number}",
-        f"{result.energies[selected_index]:.5f}",
-    )
-    metric_columns[1].metric(
-        "Analytic energy error",
-        f"{report.relative_energy_errors[selected_index]:.2e}",
-    )
-    metric_columns[2].metric(
-        "Maximum residual",
-        f"{report.maximum_relative_residual:.2e}",
-    )
-    metric_columns[3].metric("Solve time", f"{result.solve_time_seconds * 1_000:.0f} ms")
+    if experiment is ExperimentId.DOUBLE_WELL:
+        metric_columns = st.columns(3)
+        splitting = float(result.energies[1] - result.energies[0])
+        splitting_delta = None
+        if comparison_result is not None:
+            reference_splitting = float(
+                comparison_result.energies[1] - comparison_result.energies[0]
+            )
+            splitting_delta = f"{100.0 * (splitting / reference_splitting - 1.0):+.1f}%"
+        metric_columns[0].metric(
+            "Tunneling split ΔE₀₁",
+            f"{splitting:.6f}",
+            delta=splitting_delta,
+            delta_color="off",
+            delta_arrow="off",
+            delta_description="vs default" if comparison_result is not None else None,
+            help="Energy gap between the even ground state and odd first excited state.",
+        )
+        metric_columns[1].metric(
+            f"Selected energy E{state_number}",
+            f"{result.energies[selected_index]:.5f}",
+        )
+        metric_columns[2].metric("Solve time", f"{result.solve_time_seconds * 1_000:.0f} ms")
+    else:
+        metric_columns = st.columns(4)
+        metric_columns[0].metric(
+            f"Selected energy E{state_number}",
+            f"{result.energies[selected_index]:.5f}",
+        )
+        metric_columns[1].metric(
+            "Analytic energy error",
+            f"{report.relative_energy_errors[selected_index]:.2e}",
+        )
+        metric_columns[2].metric(
+            "Maximum residual",
+            f"{report.maximum_relative_residual:.2e}",
+        )
+        metric_columns[3].metric("Solve time", f"{result.solve_time_seconds * 1_000:.0f} ms")
 
     figure = build_stationary_state_figure(
         result,
         state_index=selected_index,
         quantity=quantity,
+        comparison_result=comparison_result,
     )
     st.plotly_chart(
         figure,
@@ -229,17 +333,36 @@ with result_slot:
     )
     if experiment is ExperimentId.INFINITE_WELL:
         simulation_summary = f"across a width of {well_width:.1f}"
-    else:
+    elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
         simulation_summary = f"on x ∈ [−8, 8] with ω = {oscillator_omega:.1f}"
+    else:
+        simulation_summary = (
+            f"on x ∈ [−6, 6] with V₀ = {double_well_barrier_height:.1f} and "
+            f"d = {double_well_separation:.1f}"
+        )
     st.caption(
         f"Solved {result.config.eigenstate_count} states on "
         f"{result.config.grid_points:,} grid points {simulation_summary}. The upper state profile "
         "is display-scaled; the lower panel shows its true numerical values."
     )
-    if report.passed:
-        st.success(
+    if comparison_result is not None:
+        reference_splitting = float(comparison_result.energies[1] - comparison_result.energies[0])
+        st.caption(
+            f"The default reference is fixed at V₀ = {BARRIER_HEIGHT.default:.1f} and "
+            f"d = {WELL_SEPARATION.default:.1f} (ΔE₀₁ = {reference_splitting:.6f}). Dashed "
+            "potential and dotted energy levels stay fixed while solid traces follow your controls."
+        )
+    result_passed = report.passed if report is not None else _numerical_checks_pass(result)
+    if result_passed:
+        validation_message = (
             "Validation passed — analytic energies, residuals, normalization, and orthogonality "
-            "all meet the documented tolerances.",
+            "all meet the documented tolerances."
+            if report is not None
+            else "Numerical checks passed — residuals, normalization, and orthogonality all meet "
+            "the documented tolerances."
+        )
+        st.success(
+            validation_message,
             icon=":material/verified:",
         )
     else:
@@ -258,12 +381,19 @@ with st.container(border=True):
             f"State **n = {state_number}** has **{state_number - 1} internal nodes**. Its energy "
             "is proportional to **n²**, so higher states spread farther apart on the energy axis."
         )
-    else:
+    elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
         oscillator_index = int(state_number) - 1
         st.markdown(
             f"Displayed state **{state_number}** is oscillator state **n = {oscillator_index}** "
             f"and has **{oscillator_index} internal nodes**. Adjacent energies are evenly spaced "
             f"by **ΔE = ω = {oscillator_omega:.1f}**, including the nonzero ground-state energy."
+        )
+    else:
+        parity = "even" if selected_index % 2 == 0 else "odd"
+        st.markdown(
+            f"Displayed state **{state_number}** has **{parity} parity**. The lowest even and odd "
+            f"states form a tunneling pair with **ΔE₀₁ = {splitting:.6f}**; a smaller split means "
+            "the particle exchanges between the wells more slowly."
         )
     if show_density:
         st.markdown(
@@ -286,7 +416,7 @@ with st.expander("Numerical details", icon=":material/functions:"):
         st.latex(r"V(x)=0,\qquad E_n=\frac{\pi^2 n^2}{2L^2},\quad n=1,2,\ldots")
         st.caption("Dimensionless convention: ℏ = m = 1. Boundary condition: ψ = 0 at both walls.")
         state_labels = [f"n = {index}" for index in range(1, result.config.eigenstate_count + 1)]
-    else:
+    elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
         st.latex(r"V(x)=\frac{1}{2}\omega^2x^2,\qquad E_n=\omega(n+\tfrac{1}{2})")
         st.caption(
             "Dimensionless convention: ℏ = m = 1. The unbounded oscillator is approximated on "
@@ -295,17 +425,41 @@ with st.expander("Numerical details", icon=":material/functions:"):
         state_labels = [
             f"n = {index} (state {index + 1})" for index in range(result.config.eigenstate_count)
         ]
-    st.table(
-        {
-            "State": state_labels,
-            "Numerical E": [f"{energy:.7f}" for energy in result.energies],
-            "Exact E": [f"{energy:.7f}" for energy in report.analytic_energies],
-            "Relative error": [f"{error:.2e}" for error in report.relative_energy_errors],
-        }
-    )
-    st.caption(
-        f"Validation limits: energy error ≤ {report.relative_energy_tolerance:.1e}, residual ≤ "
-        "1e−8, normalization and orthogonality errors ≤ 1e−12."
-    )
+    else:
+        st.latex(r"V(x)=V_0\left[\left(\frac{2x}{d}\right)^2-1\right]^2")
+        st.caption(
+            "Dimensionless convention: ℏ = m = 1. The minima lie at x = ±d/2 and the central "
+            "barrier is V(0) = V₀; ψ = 0 at x = ±6."
+        )
+        state_labels = [
+            f"state {index + 1} · {'even' if index % 2 == 0 else 'odd'}"
+            for index in range(result.config.eigenstate_count)
+        ]
+    if report is not None:
+        st.table(
+            {
+                "State": state_labels,
+                "Numerical E": [f"{energy:.7f}" for energy in result.energies],
+                "Exact E": [f"{energy:.7f}" for energy in report.analytic_energies],
+                "Relative error": [f"{error:.2e}" for error in report.relative_energy_errors],
+            }
+        )
+        st.caption(
+            f"Validation limits: energy error ≤ {report.relative_energy_tolerance:.1e}, residual ≤ "
+            "1e−8, normalization and orthogonality errors ≤ 1e−12."
+        )
+    else:
+        gaps = ["—", *(f"{gap:.7f}" for gap in result.energies[1:] - result.energies[:-1])]
+        st.table(
+            {
+                "State and parity": state_labels,
+                "Numerical E": [f"{energy:.7f}" for energy in result.energies],
+                "Gap from previous": gaps,
+            }
+        )
+        st.caption(
+            "No elementary exact spectrum is used for this potential. Numerical limits: residual "
+            "≤ 1e−8, normalization and orthogonality errors ≤ 1e−12."
+        )
 
 st.caption(f"Quantum Playground v{__version__} · Python, NumPy, SciPy, Plotly, and Streamlit")

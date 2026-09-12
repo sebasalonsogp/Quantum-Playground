@@ -103,6 +103,74 @@ def test_harmonic_frequency_changes_spacing_and_reset() -> None:
     assert app.toggle(key="show_density").value is False
 
 
+def test_switching_to_double_well_reveals_flagship_controls_and_splitting() -> None:
+    app = load_app()
+
+    app.selectbox(key="experiment").set_value("Symmetric double well").run()
+
+    assert not app.exception
+    assert app.slider(key="double_well_barrier_height").value == 4.0
+    assert app.slider(key="double_well_separation").value == 3.0
+    assert app.toggle(key="show_baseline").value is True
+    slider_keys = {slider.key for slider in app.slider}
+    assert "well_width" not in slider_keys
+    assert "grid_points" not in slider_keys
+    assert "oscillator_omega" not in slider_keys
+    splitting = next(element for element in app.metric if element.label == "Tunneling split ΔE₀₁")
+    assert float(splitting.value) == pytest.approx(0.068624, abs=1e-6)
+    assert splitting.delta == "+0.0%"
+    assert any("fixed at V₀ = 4.0 and d = 3.0" in caption.value for caption in app.caption)
+    assert any("tunneling pair" in element.value.lower() for element in app.markdown)
+
+
+def test_double_well_controls_update_current_result_against_stable_default() -> None:
+    app = load_app()
+    app.selectbox(key="experiment").set_value("Symmetric double well").run()
+
+    app.slider(key="double_well_barrier_height").set_value(8.0).run()
+    app.slider(key="double_well_separation").set_value(4.0).run()
+
+    assert not app.exception
+    splitting = next(element for element in app.metric if element.label == "Tunneling split ΔE₀₁")
+    assert float(splitting.value) == pytest.approx(0.000758, abs=1e-6)
+    assert splitting.delta == "-98.9%"
+    assert any(
+        "V₀ = 8.0" in caption.value and "d = 4.0" in caption.value for caption in app.caption
+    )
+    assert any("ΔE₀₁ = 0.068624" in caption.value for caption in app.caption)
+
+
+def test_double_well_interaction_survives_switching_and_reset() -> None:
+    app = load_app()
+    app.selectbox(key="experiment").set_value("Symmetric double well").run()
+    app.slider(key="double_well_barrier_height").set_value(8.0).run()
+    app.slider(key="double_well_separation").set_value(4.0).run()
+    app.slider(key="state_number").set_value(2).run()
+    app.toggle(key="show_density").set_value(True).run()
+    app.toggle(key="show_baseline").set_value(False).run()
+
+    app.selectbox(key="experiment").set_value("Harmonic oscillator").run()
+    app.selectbox(key="experiment").set_value("Symmetric double well").run()
+
+    assert not app.exception
+    assert app.slider(key="double_well_barrier_height").value == 8.0
+    assert app.slider(key="double_well_separation").value == 4.0
+    assert app.slider(key="state_number").value == 2
+    assert app.toggle(key="show_density").value is True
+    assert app.toggle(key="show_baseline").value is False
+    splitting = next(element for element in app.metric if element.label == "Tunneling split ΔE₀₁")
+    assert not splitting.delta
+
+    app.button(key="reset_controls").click().run()
+
+    assert not app.exception
+    assert app.slider(key="double_well_barrier_height").value == 4.0
+    assert app.slider(key="double_well_separation").value == 3.0
+    assert app.slider(key="state_number").value == 1
+    assert app.toggle(key="show_density").value is False
+    assert app.toggle(key="show_baseline").value is True
+
+
 def test_reset_restores_every_interactive_default() -> None:
     app = load_app()
     app.slider(key="well_width").set_value(1.5).run()

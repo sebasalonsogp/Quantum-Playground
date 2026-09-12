@@ -4,20 +4,16 @@ An interactive numerical playground for exploring how one-dimensional potential-
 landscapes determine quantum energy levels, wavefunctions, and probability densities.
 
 Quantum Playground is a focused portfolio project. It pairs a rigorously tested sparse
-eigenvalue solver with a polished Streamlit and Plotly experience. The MVP will provide three
-curated experiments—an infinite square well, a harmonic oscillator, and a flagship double
+eigenvalue solver with a polished Streamlit and Plotly experience. Its scientific MVP provides
+three curated experiments—an infinite square well, a harmonic oscillator, and a flagship double
 well—while keeping numerical diagnostics available for deeper inspection.
 
 ## Status
 
-Two interactive vertical slices are complete. Visitors can compare an infinite square well with a
-harmonic oscillator, change one interpretable confinement parameter, inspect six stationary states
-as wavefunctions or probability densities, and verify each result against exact energies and
-numerical diagnostics.
-
-The symmetric double-well scientific model is also complete and tested across its bounded barrier
-height and well-separation controls. Its recruiter-facing flagship interaction is the next MVP
-slice.
+All three interactive experiments are complete. Visitors can change bounded physical controls,
+inspect six stationary states as wavefunctions or probability densities, and review numerical
+evidence without leaving the shared solver workflow. The flagship symmetric double well adds a
+fixed default comparison and makes tunneling-induced energy splitting the central observable.
 
 ## Planned stack
 

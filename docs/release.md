@@ -32,15 +32,42 @@ data, makes no external API calls, and accepts only bounded numeric and enumerat
 
 ## Release checklist
 
-- [ ] GitHub Actions passes on the release commit.
-- [ ] A clean clone installs from the committed lockfile, runs all checks, and builds both artifacts.
-- [ ] The live app loads over HTTPS without browser console errors.
-- [ ] The live flagship journey completes using keyboard-accessible controls.
-- [ ] The live app links back to the public repository.
-- [ ] The README image, live badge, setup commands, and engineering evidence are current.
-- [ ] Repository description, topics, homepage, and release notes are current.
-- [ ] No secrets, credentials, personal data, uploads, external API calls, or database are present.
-- [ ] The potential composer remains explicitly outside the MVP.
+- [x] GitHub Actions passes on the release commit.
+- [x] A clean clone installs from the committed lockfile, runs all checks, and builds both artifacts.
+- [x] The live app loads over HTTPS without browser console errors.
+- [x] The live flagship journey completes using keyboard-accessible controls.
+- [x] The live app links back to the public repository.
+- [x] The README image, live badge, setup commands, and engineering evidence are current.
+- [x] Repository description, topics, homepage, and release notes are current.
+- [x] No secrets, credentials, personal data, uploads, external API calls, or database are present.
+- [x] The potential composer remains explicitly outside the MVP.
+
+## Release evidence
+
+The release candidate was verified on Windows with CPython 3.12 on 2026-09-11:
+
+- GitHub Actions installed the locked environment, checked formatting and lint, ran the test suite,
+  and built the package successfully.
+- A separate clone from the public repository repeated those gates: `128` tests passed and both the
+  source distribution and wheel were created. Its documented Streamlit command started the app and
+  returned `ok` from `/_stcore/health`.
+- A real-browser production smoke test loaded the HTTPS deployment, completed the double-well
+  journey, showed all three diagnostics passing, reset cleanly, and reported no console errors.
+- A dependency audit reported no known vulnerabilities. Targeted repository and history scans found
+  no committed credentials, private keys, environment files, or Streamlit secrets.
+
+## Product-brief evaluation
+
+| Success criterion | Release evidence |
+| --- | --- |
+| Understand the project within 30 seconds | The title, one-sentence purpose, experiment selector, coordinated figure, and concise trust signal are visible before the expandable technical detail. |
+| Produce a meaningful result within 90 seconds | The flagship path takes seven direct actions; it was also completed comfortably inside the scripted two-minute explanation. |
+| Create an obvious double-well change | Raising `V0` to `8.0` and `d` to `4.0` reduced the lowest-state split from `0.068624` to `0.000758` (`-98.9%`). |
+| Demonstrate grid convergence | Infinite-well refinement produced observed convergence orders `1.99999` and `2.00000`. |
+| Meet numerical tolerances | Residual, normalization, and orthogonality checks pass in tests and are exposed in the app. |
+| Keep local solves near 250 ms or less | Representative solver medians are `1.9-6.4 ms`, with an `11.0 ms` measured maximum. |
+| Keep hosted interactions under one second | The production flagship solve completed in approximately `108 ms`; local uncached app reruns had a `62.9 ms` median. |
+| Test numerical and critical UI behavior deterministically | The release suite contains `128` passing tests across contracts, numerics, figures, caching, failures, and Streamlit flows. |
 
 ## Operations and rollback
 

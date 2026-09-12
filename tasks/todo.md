@@ -372,15 +372,23 @@ passes acceptance.
 
 **Acceptance criteria:**
 
-- [ ] README leads with the live experience, a strong visual, key engineering evidence, and concise setup.
-- [ ] GitHub Actions is green and a clean clone can install, test, build, and run from documented commands.
-- [ ] The live app completes the primary journey, exposes no secrets, and links back to the repository.
+- [x] README leads with the live experience, a strong visual, key engineering evidence, and concise setup.
+- [x] GitHub Actions is green and a clean clone can install, test, build, and run from documented commands.
+- [x] The live app completes the primary journey, exposes no secrets, and links back to the repository.
 
 **Verification:**
 
-- [ ] CI passes on the release commit.
-- [ ] Manual smoke test runs against the deployed URL in a real browser.
-- [ ] Release checklist confirms repository metadata, screenshots, and the two-minute demo script.
+- [x] CI passes on the release commit.
+- [x] Manual smoke test runs against the deployed URL in a real browser.
+- [x] Release checklist confirms repository metadata, screenshots, and the two-minute demo script.
+
+**Recorded release evidence (2026-09-11):** The public repository presents the live experience,
+portfolio screenshot, engineering evidence, and locked setup path. GitHub Actions passed its complete
+quality job. A fresh public clone independently installed, passed Ruff and all `128` tests, built a
+source distribution and wheel, started Streamlit, and returned a healthy status. The deployed HTTPS
+app completed the keyboard-accessible flagship journey, displayed three passing diagnostics, reset
+cleanly, linked back to GitHub, and produced no browser console errors. Dependency and targeted
+secret scans were clean; the project accepts no uploads and stores no user data.
 
 **Dependencies:** Checkpoint D
 
@@ -390,6 +398,10 @@ passes acceptance.
 
 ### Checkpoint E: MVP complete
 
-- [ ] Public repository and live demo are available and mutually linked.
-- [ ] Product-brief success criteria are evaluated with evidence.
-- [ ] Potential-composer work remains unscheduled pending post-launch evaluation.
+- [x] Public repository and live demo are available and mutually linked.
+- [x] Product-brief success criteria are evaluated with evidence.
+- [x] Potential-composer work remains unscheduled pending post-launch evaluation.
+
+**Recorded evidence (2026-09-11):** The release runbook maps all eight product-brief criteria to
+measured or observed evidence. The three-preset MVP is complete; the potential composer remains a
+separate, unscheduled feasibility phase rather than part of the release.

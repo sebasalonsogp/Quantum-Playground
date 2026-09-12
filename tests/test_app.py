@@ -34,6 +34,10 @@ def test_app_loads_with_project_identity() -> None:
         value.startswith(":green-badge[") and "Numerically verified" in value
         for value in (element.value for element in app.markdown)
     )
+    assert any(
+        "https://github.com/sebasalonsogp/Quantum-Playground" in element.value
+        for element in app.caption
+    )
 
 
 def test_sidebar_state_adapts_to_narrow_viewports(monkeypatch) -> None:

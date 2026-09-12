@@ -603,4 +603,7 @@ with st.expander("Numerical details", icon=":material/functions:"):
                 border="horizontal",
             )
 
-st.caption(f"Quantum Playground v{__version__} · Python, NumPy, SciPy, Plotly, and Streamlit")
+st.caption(
+    f"Quantum Playground v{__version__} · Python, NumPy, SciPy, Plotly, and Streamlit · "
+    "[View source on GitHub](https://github.com/sebasalonsogp/Quantum-Playground)"
+)

@@ -20,6 +20,11 @@ _WAVEFUNCTION = "#A78BFA"
 _DENSITY = "#F472B6"
 _REFERENCE = "rgba(148, 163, 184, 0.58)"
 _REFERENCE_POTENTIAL = "rgba(34, 211, 238, 0.42)"
+_SUBSCRIPT_TRANSLATION = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
+
+def _subscript(number: int) -> str:
+    return str(number).translate(_SUBSCRIPT_TRANSLATION)
 
 
 class StateQuantity(StrEnum):
@@ -53,17 +58,18 @@ def _profile_values(
 ) -> tuple[FloatArray, str, str, str, str | None]:
     wavefunction = result.wavefunctions[state_index]
     state_number = state_index + 1
+    state_subscript = _subscript(state_number)
     if quantity is StateQuantity.WAVEFUNCTION:
         return (
             wavefunction,
-            f"ψ{state_number}(x)",
+            f"ψ{state_subscript}(x)",
             "Wavefunction ψ(x)",
             _WAVEFUNCTION,
             None,
         )
     return (
         wavefunction**2,
-        f"|ψ{state_number}(x)|²",
+        f"|ψ{state_subscript}(x)|²",
         "Probability density |ψ(x)|²",
         _DENSITY,
         "tozeroy",
@@ -127,18 +133,19 @@ def _add_reference_context(figure: go.Figure, reference: SimulationResult) -> No
     lower, upper = reference.config.domain
     for state_index in (0, 1):
         state_number = state_index + 1
+        energy_symbol = f"E{_subscript(state_number)}"
         energy = float(reference.energies[state_index])
         figure.add_trace(
             go.Scatter(
                 x=(lower, upper),
                 y=(energy, energy),
                 mode="lines",
-                name="Reference E1/E2" if state_index == 0 else "Reference E2",
+                name="Reference E₁/E₂" if state_index == 0 else "Reference E₂",
                 legendgroup="reference-lowest-pair",
                 showlegend=state_index == 0,
                 line={"color": _REFERENCE, "dash": "dot", "width": 1.6},
                 hovertemplate=(
-                    f"Reference E{state_number} = %{{y:.6g}}<extra>Default baseline</extra>"
+                    f"Reference {energy_symbol} = %{{y:.6g}}<extra>Default baseline</extra>"
                 ),
             ),
             row=1,
@@ -155,16 +162,17 @@ def _add_energy_levels(
     unselected_legend_added = False
     for index, energy in enumerate(result.energies):
         state_number = index + 1
+        energy_symbol = f"E{_subscript(state_number)}"
         is_selected = index == state_index
         if is_selected:
-            name = f"Selected E{state_number}"
+            name = f"Selected {energy_symbol}"
             showlegend = True
         elif not unselected_legend_added:
             name = "Other levels"
             showlegend = True
             unselected_legend_added = True
         else:
-            name = f"E{state_number}"
+            name = energy_symbol
             showlegend = False
 
         figure.add_trace(
@@ -179,7 +187,7 @@ def _add_energy_levels(
                     "dash": "solid" if is_selected else "dash",
                     "width": 3.0 if is_selected else 1.4,
                 },
-                hovertemplate=(f"E{state_number} = %{{y:.6g}}<extra>Energy level</extra>"),
+                hovertemplate=(f"{energy_symbol} = %{{y:.6g}}<extra>Energy level</extra>"),
             ),
             row=1,
             col=1,
@@ -187,7 +195,7 @@ def _add_energy_levels(
         figure.add_annotation(
             x=upper,
             y=float(energy),
-            text=f"E{state_number}",
+            text=energy_symbol,
             showarrow=False,
             xanchor="left",
             xshift=7,
@@ -391,7 +399,7 @@ def build_stationary_state_figure(
 
 
 def _tunneling_title(cycle_position: float, left: float, right: float) -> str:
-    return f"Tunneling · t/T {cycle_position:.2f} · L {left:.1%} · R {right:.1%}"
+    return f"Tunneling · t/T = {cycle_position:.2f} · Pₗ = {left:.1%} · Pᵣ = {right:.1%}"
 
 
 def _tunneling_snapshot(
@@ -477,14 +485,15 @@ def _add_tunneling_traces(
     ):
         energy = float(result.energies[state_index])
         state_number = state_index + 1
+        energy_symbol = f"E{_subscript(state_number)}"
         figure.add_trace(
             go.Scatter(
                 x=(lower, upper),
                 y=(energy, energy),
                 mode="lines",
-                name=f"E{state_number} · {'even' if state_index == 0 else 'odd'}",
+                name=f"{energy_symbol} · {'even' if state_index == 0 else 'odd'}",
                 line={"color": color, "dash": dash, "width": 2.2},
-                hovertemplate=f"E{state_number} = %{{y:.6g}}<extra>Stationary state</extra>",
+                hovertemplate=f"{energy_symbol} = %{{y:.6g}}<extra>Stationary state</extra>",
             ),
             row=1,
             col=1,

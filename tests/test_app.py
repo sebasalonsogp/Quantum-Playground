@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,13 @@ def diagnostics_table(app: AppTest):
     return next(table.value for table in app.table if "Observed" in table.value.columns)
 
 
+def math_scientific_to_float(value: str) -> float:
+    match = re.fullmatch(r"\$(-?\d+\.\d+) \\times 10\^\{(-?\d+)\}\$", value)
+    assert match is not None
+    coefficient, exponent = match.groups()
+    return float(coefficient) * 10 ** int(exponent)
+
+
 def test_app_loads_with_project_identity() -> None:
     app = load_app()
 
@@ -29,7 +37,7 @@ def test_app_loads_with_project_identity() -> None:
     assert app.slider(key="grid_points").value == 801
     assert app.slider(key="state_number").value == 1
     assert app.toggle(key="show_density").value is False
-    assert any(element.label == "Selected energy E1" for element in app.metric)
+    assert any(element.label == r"Selected energy $E_{1}$" for element in app.metric)
     assert any(
         value.startswith(":green-badge[") and "Numerically verified" in value
         for value in (element.value for element in app.markdown)
@@ -76,7 +84,7 @@ def test_result_metrics_prioritize_decisions_without_diagnostic_overload() -> No
 
     assert not app.exception
     assert [metric.label for metric in app.metric] == [
-        "Selected energy E1",
+        r"Selected energy $E_{1}$",
         "Analytic energy error",
         "Solve time",
     ]
@@ -91,7 +99,8 @@ def test_diagnostics_use_a_compact_signal_with_expandable_evidence() -> None:
     assert any(status.label == "Numerical details" for status in app.status)
     assert any("second-order centered finite difference" in item.value for item in app.markdown)
     assert any(
-        "Grid: 801 points" in caption.value and "Δx" in caption.value for caption in app.caption
+        "Grid: 801 points" in caption.value and r"\Delta x" in caption.value
+        for caption in app.caption
     )
 
     evidence = diagnostics_table(app)
@@ -102,8 +111,10 @@ def test_diagnostics_use_a_compact_signal_with_expandable_evidence() -> None:
         "State orthogonality",
     ]
     assert evidence["Status"].tolist() == [":green-badge[Pass]"] * 4
-    assert evidence["Observed"].str.match(r"\d\.\d\de[+-]\d\d").all()
-    assert evidence["Limit"].str.startswith("≤ ").all()
+    assert evidence["Observed"].str.match(r"\$\d\.\d\d \\times 10\^\{-?\d+\}\$").all()
+    assert evidence["Limit"].str.match(r"\$\\le \d\.\d \\times 10\^\{-?\d+\}\$").all()
+    spectrum = next(table.value for table in app.table if "Relative error" in table.value.columns)
+    assert spectrum["Relative error"].str.match(r"\$\d\.\d\d \\times 10\^\{-?\d+\}\$").all()
 
 
 def test_diagnostics_offer_on_demand_convergence_evidence() -> None:
@@ -119,6 +130,11 @@ def test_diagnostics_offer_on_demand_convergence_evidence() -> None:
     convergence = next(table.value for table in app.table if "Grid points" in table.value.columns)
     assert convergence["Grid points"].tolist() == [201, 401, 801]
     assert convergence["Observed order"].tolist()[0] == "—"
+    assert (
+        convergence["Relative ground-state error"]
+        .str.match(r"\$\d\.\d\d \\times 10\^\{-?\d+\}\$")
+        .all()
+    )
     assert all(
         float(order) == pytest.approx(2.0, abs=0.01) for order in convergence["Observed order"][1:]
     )
@@ -181,7 +197,7 @@ def test_resolution_control_recomputes_the_shared_simulation() -> None:
     updated_error = next(
         element.value for element in app.metric if element.label == "Analytic energy error"
     )
-    assert float(updated_error) > float(initial_error)
+    assert math_scientific_to_float(updated_error) > math_scientific_to_float(initial_error)
 
 
 def test_state_selection_and_density_toggle_update_the_explanation() -> None:
@@ -191,7 +207,7 @@ def test_state_selection_and_density_toggle_update_the_explanation() -> None:
     app.toggle(key="show_density").set_value(True).run()
 
     assert not app.exception
-    assert any(element.label == "Selected energy E4" for element in app.metric)
+    assert any(element.label == r"Selected energy $E_{4}$" for element in app.metric)
     assert any("3 internal nodes" in element.value for element in app.markdown)
     assert any("probability density" in element.value.lower() for element in app.markdown)
 
@@ -277,7 +293,7 @@ def test_switching_to_harmonic_updates_controls_result_and_explanation() -> None
     assert "grid_points" not in slider_keys
     assert any(header.value == "Harmonic oscillator" for header in app.header)
     selected_energy = next(
-        element.value for element in app.metric if element.label == "Selected energy E1"
+        element.value for element in app.metric if element.label == r"Selected energy $E_{1}$"
     )
     assert float(selected_energy) == pytest.approx(0.5, abs=1e-4)
     assert any("evenly spaced" in element.value for element in app.markdown)
@@ -288,16 +304,16 @@ def test_harmonic_frequency_changes_spacing_and_reset() -> None:
     app = load_app()
     app.selectbox(key="experiment").set_value("Harmonic oscillator").run()
     initial_energy = next(
-        element.value for element in app.metric if element.label == "Selected energy E1"
+        element.value for element in app.metric if element.label == r"Selected energy $E_{1}$"
     )
 
     app.slider(key="oscillator_omega").set_value(2.0).run()
 
     updated_energy = next(
-        element.value for element in app.metric if element.label == "Selected energy E1"
+        element.value for element in app.metric if element.label == r"Selected energy $E_{1}$"
     )
     assert float(updated_energy) == pytest.approx(2.0 * float(initial_energy), abs=1e-4)
-    assert any("ω = 2.0" in caption.value for caption in app.caption)
+    assert any(r"\omega = 2.0" in caption.value for caption in app.caption)
 
     app.selectbox(key="experiment").set_value("Infinite square well").run()
     assert app.slider(key="well_width").value == 1.0
@@ -327,10 +343,14 @@ def test_switching_to_double_well_reveals_flagship_controls_and_splitting() -> N
     assert "well_width" not in slider_keys
     assert "grid_points" not in slider_keys
     assert "oscillator_omega" not in slider_keys
-    splitting = next(element for element in app.metric if element.label == "Energy split ΔE₀₁")
+    splitting = next(
+        element for element in app.metric if element.label == r"Energy split $\Delta E_{01}$"
+    )
     assert float(splitting.value) == pytest.approx(0.068624, abs=5e-5)
     assert splitting.delta == "+0.0%"
-    assert any("fixed at V₀ = 4.0 and d = 3.0" in caption.value for caption in app.caption)
+    assert any(
+        r"V_0 = 4.0" in caption.value and "$d = 3.0$" in caption.value for caption in app.caption
+    )
     assert any("tunneling pair" in element.value.lower() for element in app.markdown)
 
 
@@ -350,9 +370,9 @@ def test_double_well_tunneling_view_exposes_cycle_story_and_period() -> None:
     assert "show_baseline" not in {toggle.key for toggle in app.toggle}
     metric_labels = [metric.label for metric in app.metric]
     assert metric_labels == [
-        "Energy split ΔE₀₁",
+        r"Energy split $\Delta E_{01}$",
         "Left probability",
-        "Period T",
+        r"Period $T$",
     ]
     assert float(app.metric[1].value.rstrip("%")) == pytest.approx(99.6, abs=0.1)
     assert float(app.metric[2].value) == pytest.approx(91.56, abs=0.02)
@@ -383,13 +403,15 @@ def test_double_well_controls_update_current_result_against_stable_default() -> 
     app.slider(key="double_well_separation").set_value(4.0).run()
 
     assert not app.exception
-    splitting = next(element for element in app.metric if element.label == "Energy split ΔE₀₁")
+    splitting = next(
+        element for element in app.metric if element.label == r"Energy split $\Delta E_{01}$"
+    )
     assert float(splitting.value) == pytest.approx(0.000758, abs=1e-6)
     assert splitting.delta == "-98.9%"
     assert any(
-        "V₀ = 8.0" in caption.value and "d = 4.0" in caption.value for caption in app.caption
+        r"V_0 = 8.0" in caption.value and "$d = 4.0$" in caption.value for caption in app.caption
     )
-    assert any("ΔE₀₁ = 0.068624" in caption.value for caption in app.caption)
+    assert any(r"\Delta E_{01} = 0.068624" in caption.value for caption in app.caption)
 
 
 def test_double_well_interaction_survives_switching_and_reset() -> None:
@@ -410,7 +432,9 @@ def test_double_well_interaction_survives_switching_and_reset() -> None:
     assert app.slider(key="state_number").value == 2
     assert app.toggle(key="show_density").value is True
     assert app.toggle(key="show_baseline").value is False
-    splitting = next(element for element in app.metric if element.label == "Energy split ΔE₀₁")
+    splitting = next(
+        element for element in app.metric if element.label == r"Energy split $\Delta E_{01}$"
+    )
     assert not splitting.delta
 
     app.button(key="reset_controls").click().run()

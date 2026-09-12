@@ -154,12 +154,18 @@ def _diagnostic_evidence(
 ) -> dict[str, list[str]]:
     return {
         "Check": [label for label, _, _, _ in checks],
-        "Observed": [f"{observed:.2e}" for _, observed, _, _ in checks],
-        "Limit": [f"≤ {limit:.1e}" for _, _, limit, _ in checks],
+        "Observed": [_scientific_math(observed) for _, observed, _, _ in checks],
+        "Limit": [_scientific_math(limit, decimals=1, prefix=r"\le") for _, _, limit, _ in checks],
         "Status": [
             ":green-badge[Pass]" if passed else ":red-badge[Fail]" for _, _, _, passed in checks
         ],
     }
+
+
+def _scientific_math(value: float, *, decimals: int = 2, prefix: str = "") -> str:
+    coefficient, exponent = f"{value:.{decimals}e}".split("e")
+    prefix_text = f"{prefix} " if prefix else ""
+    return rf"${prefix_text}{coefficient} \times 10^{{{int(exponent)}}}$"
 
 
 st.set_page_config(
@@ -274,18 +280,20 @@ if experiment is ExperimentId.INFINITE_WELL:
         "Choose a higher state and count its internal nodes, or widen the well and watch every "
         "energy level move downward."
     )
-    state_help = "State n has n − 1 internal nodes and an energy proportional to n²."
+    state_help = r"State $n$ has $n-1$ internal nodes and an energy proportional to $n^2$."
 elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
     preset = HARMONIC_OSCILLATOR_PRESET
     try_this = (
-        "Raise ω and watch the evenly spaced energy ladder expand while the state contracts "
+        r"Raise $\omega$ and watch the evenly spaced energy ladder expand while the state "
+        "contracts "
         "toward the center."
     )
-    state_help = "Displayed state k corresponds to oscillator quantum number n = k − 1."
+    state_help = r"Displayed state $k$ corresponds to oscillator quantum number $n=k-1$."
 else:
     preset = DOUBLE_WELL_PRESET
     try_this = (
-        "Raise either control and watch ΔE₀₁ collapse as the lowest tunneling pair becomes "
+        r"Raise either control and watch $\Delta E_{01}$ collapse as the lowest tunneling "
+        "pair becomes "
         "nearly degenerate."
     )
     state_help = "States 1 and 2 are the even/odd tunneling pair; higher states add nodes."
@@ -318,7 +326,7 @@ if is_tunneling_motion:
     show_density = True
     show_baseline = False
     tunneling_cycle = st.slider(
-        "Tunneling cycle t/T",
+        r"Tunneling cycle $t/T$",
         min_value=0.0,
         max_value=1.0,
         step=0.025,
@@ -330,7 +338,8 @@ if is_tunneling_motion:
     )
     st.caption("Drag through one full cycle: start → balanced → opposite well → return.")
 else:
-    control_columns = st.columns((3, 2, 2), vertical_alignment="bottom")
+    control_widths = (3, 2, 2) if experiment is ExperimentId.DOUBLE_WELL else (3, 2)
+    control_columns = st.columns(control_widths, vertical_alignment="bottom")
     with control_columns[0]:
         state_number = st.slider(
             "Quantum state",
@@ -344,11 +353,14 @@ else:
         show_density = st.toggle(
             "Show probability density",
             key="show_density",
-            help="Switch from the signed wavefunction ψ(x) to the measurable density |ψ(x)|².",
+            help=(
+                r"Switch from the signed wavefunction $\psi(x)$ to the measurable density "
+                r"$|\psi(x)|^2$."
+            ),
             wrap=True,
         )
-    with control_columns[2]:
-        if experiment is ExperimentId.DOUBLE_WELL:
+    if experiment is ExperimentId.DOUBLE_WELL:
+        with control_columns[2]:
             _load_dynamic_control("show_baseline")
             show_baseline = st.toggle(
                 "Compare with default",
@@ -358,8 +370,8 @@ else:
                 args=("show_baseline",),
                 wrap=True,
             )
-        else:
-            show_baseline = False
+    else:
+        show_baseline = False
 
 st.subheader("Live result", icon=":material/insights:")
 result_slot = st.container()
@@ -415,7 +427,7 @@ with result_slot:
         metric_columns = st.columns(3)
         with metric_columns[0]:
             st.metric(
-                "Energy split ΔE₀₁",
+                r"Energy split $\Delta E_{01}$",
                 f"{splitting:.3g}",
                 delta=splitting_delta,
                 delta_color="off",
@@ -434,7 +446,7 @@ with result_slot:
                 )
             with metric_columns[2]:
                 st.metric(
-                    "Period T",
+                    r"Period $T$",
                     f"{tunneling_period:.2f}",
                     help="One complete left-to-right-to-left cycle in dimensionless time.",
                     border=True,
@@ -442,7 +454,7 @@ with result_slot:
         else:
             with metric_columns[1]:
                 st.metric(
-                    f"Selected energy E{state_number}",
+                    f"Selected energy $E_{{{state_number}}}$",
                     f"{result.energies[selected_index]:.5f}",
                     border=True,
                 )
@@ -455,13 +467,13 @@ with result_slot:
     else:
         with st.container(horizontal=True, gap="small"):
             st.metric(
-                f"Selected energy E{state_number}",
+                f"Selected energy $E_{{{state_number}}}$",
                 f"{result.energies[selected_index]:.5f}",
                 border=True,
             )
             st.metric(
                 "Analytic energy error",
-                f"{report.relative_energy_errors[selected_index]:.2e}",
+                _scientific_math(report.relative_energy_errors[selected_index]),
                 border=True,
             )
             st.metric(
@@ -478,13 +490,13 @@ with result_slot:
         config={"displaylogo": False, "scrollZoom": False, "responsive": True},
     )
     if experiment is ExperimentId.INFINITE_WELL:
-        simulation_summary = f"across a width of {well_width:.1f}"
+        simulation_summary = rf"across a width $L = {well_width:.1f}$"
     elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
-        simulation_summary = f"on x ∈ [−8, 8] with ω = {oscillator_omega:.1f}"
+        simulation_summary = rf"on $x \in [-8, 8]$ with $\omega = {oscillator_omega:.1f}$"
     else:
         simulation_summary = (
-            f"on x ∈ [−6, 6] with V₀ = {double_well_barrier_height:.1f} and "
-            f"d = {double_well_separation:.1f}"
+            rf"on $x \in [-6, 6]$ with $V_0 = {double_well_barrier_height:.1f}$ and "
+            rf"$d = {double_well_separation:.1f}$"
         )
     figure_note = (
         "The cycle view shows the true normalized density of an equal two-state superposition."
@@ -499,8 +511,9 @@ with result_slot:
     if comparison_result is not None:
         reference_splitting = float(comparison_result.energies[1] - comparison_result.energies[0])
         st.caption(
-            f"The default reference is fixed at V₀ = {BARRIER_HEIGHT.default:.1f} and "
-            f"d = {WELL_SEPARATION.default:.1f} (ΔE₀₁ = {reference_splitting:.6f}). Dashed "
+            rf"The default reference is fixed at $V_0 = {BARRIER_HEIGHT.default:.1f}$ and "
+            rf"$d = {WELL_SEPARATION.default:.1f}$ "
+            rf"($\Delta E_{{01}} = {reference_splitting:.6f}$). Dashed "
             "potential and dotted energy levels stay fixed while solid traces follow your controls."
         )
     result_passed = all(passed for _, _, _, passed in diagnostic_checks)
@@ -539,34 +552,37 @@ with st.container(border=True):
     if is_tunneling_motion:
         st.markdown(
             "The cycle begins with a **localized superposition** of the lowest even and odd "
-            "stationary states. Their relative phase evolves at the energy splitting ΔE₀₁, moving "
+            r"stationary states. Their relative phase evolves at the energy splitting "
+            r"$\Delta E_{01}$, moving "
             "the probability density between the wells without changing its normalization."
         )
         st.markdown(
-            f"After **half a period** the density reaches the opposite well; after "
-            f"**T = 2π/ΔE₀₁ = {tunneling_period:.2f}** it returns to its starting side."
+            rf"After **half a period** the density reaches the opposite well; after "
+            rf"$T = 2\pi/\Delta E_{{01}} = {tunneling_period:.2f}$ it returns to its starting side."
         )
         st.caption(
-            f"At t/T = {tunneling_cycle:.3f}: left {left_probability:.1%} · "
-            f"right {right_probability:.1%}."
+            rf"At $t/T = {tunneling_cycle:.3f}$: $P_L = {left_probability:.1%}$ · "
+            rf"$P_R = {right_probability:.1%}$."
         )
     elif experiment is ExperimentId.INFINITE_WELL:
         st.markdown(
-            f"State **n = {state_number}** has **{state_number - 1} internal nodes**. Its energy "
-            "is proportional to **n²**, so higher states spread farther apart on the energy axis."
+            rf"State $n = {state_number}$ has **{state_number - 1} internal nodes**. Its energy "
+            r"is proportional to $n^2$, so higher states spread farther apart on the energy axis."
         )
     elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
         oscillator_index = int(state_number) - 1
         st.markdown(
-            f"Displayed state **{state_number}** is oscillator state **n = {oscillator_index}** "
+            rf"Displayed state **{state_number}** is oscillator state $n = {oscillator_index}$ "
             f"and has **{oscillator_index} internal nodes**. Adjacent energies are evenly spaced "
-            f"by **ΔE = ω = {oscillator_omega:.1f}**, including the nonzero ground-state energy."
+            rf"by $\Delta E = \omega = {oscillator_omega:.1f}$, including the nonzero "
+            "ground-state energy."
         )
     else:
         parity = "even" if selected_index % 2 == 0 else "odd"
         st.markdown(
             f"Displayed state **{state_number}** has **{parity} parity**. The lowest even and odd "
-            f"states form a tunneling pair with **ΔE₀₁ = {splitting:.6f}**; a smaller split means "
+            rf"states form a tunneling pair with $\Delta E_{{01}} = {splitting:.6f}$; a smaller "
+            "split means "
             "the particle exchanges between the wells more slowly."
         )
     if not is_tunneling_motion:
@@ -590,30 +606,31 @@ with st.expander("Numerical details", icon=":material/functions:"):
     st.latex(r"-\frac{1}{2}\frac{d^2\psi}{dx^2} + V(x)\psi = E\psi")
     if experiment is ExperimentId.INFINITE_WELL:
         st.latex(r"V(x)=0,\qquad E_n=\frac{\pi^2 n^2}{2L^2},\quad n=1,2,\ldots")
-        boundary_description = "ψ = 0 at both walls"
-        state_labels = [f"n = {index}" for index in range(1, result.config.eigenstate_count + 1)]
+        boundary_description = r"$\psi = 0$ at both walls"
+        state_labels = [f"$n = {index}$" for index in range(1, result.config.eigenstate_count + 1)]
     elif experiment is ExperimentId.HARMONIC_OSCILLATOR:
         st.latex(r"V(x)=\frac{1}{2}\omega^2x^2,\qquad E_n=\omega(n+\tfrac{1}{2})")
         boundary_description = (
-            "finite-domain approximation on x ∈ [−8, 8], with ψ = 0 at both endpoints"
+            r"finite-domain approximation on $x \in [-8, 8]$, with $\psi = 0$ at both endpoints"
         )
         state_labels = [
-            f"n = {index} (state {index + 1})" for index in range(result.config.eigenstate_count)
+            f"$n = {index}$ (state {index + 1})" for index in range(result.config.eigenstate_count)
         ]
     else:
         st.latex(r"V(x)=V_0\left[\left(\frac{2x}{d}\right)^2-1\right]^2")
-        boundary_description = "finite domain x ∈ [−6, 6], with ψ = 0 at both endpoints"
+        boundary_description = r"finite domain $x \in [-6, 6]$, with $\psi = 0$ at both endpoints"
         state_labels = [
             f"state {index + 1} · {'even' if index % 2 == 0 else 'odd'}"
             for index in range(result.config.eigenstate_count)
         ]
     grid_spacing = float(result.x[1] - result.x[0])
+    grid_spacing_math = _scientific_math(grid_spacing, decimals=3, prefix=r"\Delta x =")
     st.caption(
-        f"Grid: {result.config.grid_points:,} points with Δx = {grid_spacing:.3e}. "
-        f"Dimensionless units: ℏ = m = 1. Boundary: {boundary_description}."
+        f"Grid: {result.config.grid_points:,} points with {grid_spacing_math}. "
+        rf"Dimensionless units: $\hbar = m = 1$. Boundary: {boundary_description}."
     )
     if experiment is ExperimentId.DOUBLE_WELL:
-        st.caption("The minima lie at x = ±d/2 and the central barrier is V(0) = V₀.")
+        st.caption(r"The minima lie at $x = \pm d/2$ and the central barrier is $V(0) = V_0$.")
 
     st.markdown("**Current-run checks**")
     st.table(_diagnostic_evidence(diagnostic_checks), border="horizontal")
@@ -625,7 +642,9 @@ with st.expander("Numerical details", icon=":material/functions:"):
                 "State": state_labels,
                 "Numerical E": [f"{energy:.7f}" for energy in result.energies],
                 "Exact E": [f"{energy:.7f}" for energy in report.analytic_energies],
-                "Relative error": [f"{error:.2e}" for error in report.relative_energy_errors],
+                "Relative error": [
+                    _scientific_math(error) for error in report.relative_energy_errors
+                ],
             },
             border="horizontal",
         )
@@ -687,7 +706,7 @@ with st.expander("Numerical details", icon=":material/functions:"):
                 {
                     "Grid points": list(_CONVERGENCE_GRID_POINTS),
                     "Relative ground-state error": [
-                        f"{error:.2e}" for error in convergence.relative_energy_errors
+                        _scientific_math(error) for error in convergence.relative_energy_errors
                     ],
                     "Observed order": [
                         "—",

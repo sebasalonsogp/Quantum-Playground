@@ -61,12 +61,12 @@ def test_selected_state_has_text_and_line_style_not_just_color(well_result) -> N
     figure = build_stationary_state_figure(well_result, state_index=2)
     energy_traces = figure.data[1 : 1 + well_result.config.eigenstate_count]
 
-    assert energy_traces[2].name == "Selected E3"
+    assert energy_traces[2].name == "Selected E₃"
     assert energy_traces[2].line.dash == "solid"
     assert energy_traces[2].line.width > energy_traces[0].line.width
     assert energy_traces[0].line.dash == "dash"
     assert "displayed state 3" in figure.layout.title.text.lower()
-    assert any(annotation.text == "E3" for annotation in figure.layout.annotations)
+    assert any(annotation.text == "E₃" for annotation in figure.layout.annotations)
 
 
 def test_quantity_switch_uses_true_wavefunction_or_probability_density(well_result) -> None:
@@ -83,8 +83,8 @@ def test_quantity_switch_uses_true_wavefunction_or_probability_density(well_resu
 
     np.testing.assert_allclose(wavefunction_figure.data[-1].y, well_result.wavefunctions[1])
     np.testing.assert_allclose(density_figure.data[-1].y, well_result.wavefunctions[1] ** 2)
-    assert wavefunction_figure.data[-1].name == "ψ2(x)"
-    assert density_figure.data[-1].name == "|ψ2(x)|²"
+    assert wavefunction_figure.data[-1].name == "ψ₂(x)"
+    assert density_figure.data[-1].name == "|ψ₂(x)|²"
     assert wavefunction_figure.layout.yaxis2.title.text == "Wavefunction ψ(x)"
     assert density_figure.layout.yaxis2.title.text == "Probability density |ψ(x)|²"
     assert density_figure.data[-1].fill == "tozeroy"
@@ -175,6 +175,10 @@ def test_tunneling_motion_scrubs_a_normalized_density_between_wells() -> None:
     )
     assert initial_figure.layout.meta["cycle_position"] == pytest.approx(0.0)
     assert half_period_figure.layout.meta["cycle_position"] == pytest.approx(0.5)
+    assert initial_figure.data[2].name == "E₁ · even"
+    assert initial_figure.data[3].name == "E₂ · odd"
+    assert "Pₗ" in initial_figure.layout.title.text
+    assert "Pᵣ" in initial_figure.layout.title.text
 
     initial_density = np.asarray(initial_figure.data[0].y)
     quarter_period_density = np.asarray(quarter_period_figure.data[0].y)

@@ -1,57 +1,90 @@
 # Quantum Playground
 
-An interactive numerical playground for exploring how one-dimensional potential-energy
+[![Open the live app](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://quantum-playground-app.streamlit.app)
+[![CI](https://github.com/sebasalonsogp/Quantum-Playground/actions/workflows/ci.yml/badge.svg)](https://github.com/sebasalonsogp/Quantum-Playground/actions/workflows/ci.yml)
+
+An interactive scientific-computing showcase for exploring how one-dimensional potential-energy
 landscapes determine quantum energy levels, wavefunctions, and probability densities.
 
-Quantum Playground is a focused portfolio project. It pairs a rigorously tested sparse
-eigenvalue solver with a polished Streamlit and Plotly experience. Its scientific MVP provides
-three curated experiments—an infinite square well, a harmonic oscillator, and a flagship double
-well—while keeping numerical diagnostics available for deeper inspection.
+[![Quantum Playground showing a verified infinite-well simulation](assets/quantum-playground-demo.png)](https://quantum-playground-app.streamlit.app)
 
-## Status
+## Try the flagship interaction
 
-All three interactive experiments are complete. Visitors can change bounded physical controls,
-inspect six stationary states as wavefunctions or probability densities, and review numerical
-evidence without leaving the shared solver workflow. The flagship symmetric double well adds a
-fixed default comparison and makes tunneling-induced energy splitting the central observable.
+Open the [live app](https://quantum-playground-app.streamlit.app), choose **Symmetric double
+well**, and raise the barrier height or well separation. The lowest two energy levels move toward
+degeneracy as tunneling is suppressed. A fixed default comparison makes the collapsing energy split
+visible immediately, while expandable diagnostics show why the numerical result is trustworthy.
 
-## Planned stack
+The complete two-minute path is:
 
-- Python 3.12
-- NumPy and SciPy
-- Streamlit and Plotly
-- pytest and Streamlit AppTest
-- Ruff
-- uv
+`choose an experiment → change a parameter → observe the physics → read the explanation → verify the numerics`
 
-## Development
+## What this project demonstrates
+
+| Area | Evidence |
+| --- | --- |
+| Scientific computing | Sparse finite-difference Hamiltonians and shift-invert eigenvalue solving with NumPy and SciPy |
+| Numerical credibility | Analytic checks, eigenpair residuals, normalization, orthogonality, and measured second-order convergence |
+| Product engineering | Three curated experiments, bounded controls, responsive Plotly figures, keyboard-accessible Streamlit UI, and actionable failure states |
+| Software quality | Typed immutable models, read-only numerical results, 128 automated tests, frozen dependencies, and GitHub Actions |
+| Performance | Representative solver medians of 1.9–6.4 ms and hosted-style interaction medians near 60 ms on the recorded development machine |
+
+## Experiments
+
+- **Infinite square well:** compare computed levels with an exact spectrum and run an on-demand grid
+  convergence study.
+- **Harmonic oscillator:** change the confinement frequency and observe uniform level spacing and
+  spatial contraction.
+- **Symmetric double well:** explore tunneling partners, parity, and the energy split between the
+  lowest even and odd states.
+
+Every experiment follows one numerical path:
+
+`bounded controls → sampled V(x) → sparse Hamiltonian → eigenpairs → diagnostics → visualization`
+
+## Run locally
+
+Prerequisites: [Git](https://git-scm.com/) and [uv](https://docs.astral.sh/uv/).
 
 ```powershell
-uv sync --all-groups
+git clone https://github.com/sebasalonsogp/Quantum-Playground.git
+cd Quantum-Playground
+uv sync --locked --all-groups
 uv run streamlit run app.py
-uv run pytest
-uv run ruff check .
+```
+
+Then open `http://localhost:8501`.
+
+## Verify the project
+
+```powershell
 uv run ruff format --check .
+uv run ruff check .
+uv run pytest
+uv build
 uv run python scripts/benchmark_runtime.py
 ```
 
 The benchmark records uncached default and maximum-resolution solver paths plus initial, cached
-visual, and uncached physical-control reruns through Streamlit AppTest. It reports rather than
-enforces the timing budgets so slower machines produce evidence instead of flaky test failures.
+visual, and uncached physical-control reruns through Streamlit AppTest. It reports timing evidence
+without turning machine-dependent performance into a flaky test gate.
 
-## Architecture
+## Architecture and scope
 
-The scientific package remains independent from Streamlit, with one-way dependencies from
-the application shell into typed models, potential definitions, the solver, validation, and
-visualization. See [docs/architecture.md](docs/architecture.md) for the approved boundaries.
+The Streamlit shell depends on a UI-independent scientific package containing immutable models,
+potential definitions, the sparse solver, validation, and visualization. Scientific logic never
+enters the app layer, and every user control is validated before computation.
 
-The motivation, target audience, MVP, success criteria, and exclusions are recorded in the
-[product brief](docs/product-brief.md).
+The MVP intentionally excludes arbitrary expressions, time dependence, extra dimensions, accounts,
+databases, and a separate API. A bounded potential composer remains the preferred post-launch
+extension only if user evaluation shows it improves the portfolio experience.
 
-The phased delivery strategy and task-level acceptance criteria are in the
-[implementation plan](tasks/plan.md).
+- [Product brief](docs/product-brief.md)
+- [Architecture](docs/architecture.md)
+- [Implementation plan](tasks/plan.md)
+- [Release and demo runbook](docs/release.md)
+- [Changelog](CHANGELOG.md)
 
-## Scope
+## Technology
 
-The potential composer is intentionally deferred. The MVP prioritizes curated experiments,
-one memorable double-well interaction, and visible numerical correctness.
+Python 3.12 · NumPy · SciPy · Streamlit · Plotly · pytest · Ruff · uv · GitHub Actions

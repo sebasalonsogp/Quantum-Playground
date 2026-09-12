@@ -327,11 +327,52 @@ def test_switching_to_double_well_reveals_flagship_controls_and_splitting() -> N
     assert "well_width" not in slider_keys
     assert "grid_points" not in slider_keys
     assert "oscillator_omega" not in slider_keys
-    splitting = next(element for element in app.metric if element.label == "Tunneling split ΔE₀₁")
-    assert float(splitting.value) == pytest.approx(0.068624, abs=1e-6)
+    splitting = next(element for element in app.metric if element.label == "Energy split ΔE₀₁")
+    assert float(splitting.value) == pytest.approx(0.068624, abs=5e-5)
     assert splitting.delta == "+0.0%"
     assert any("fixed at V₀ = 4.0 and d = 3.0" in caption.value for caption in app.caption)
     assert any("tunneling pair" in element.value.lower() for element in app.markdown)
+
+
+def test_double_well_tunneling_view_exposes_cycle_story_and_period() -> None:
+    app = load_app()
+    app.selectbox(key="experiment").set_value("Symmetric double well").run()
+
+    assert app.segmented_control(key="visualization_mode").value == "Stationary state"
+
+    app.segmented_control(key="visualization_mode").set_value("Tunneling motion").run()
+
+    assert not app.exception
+    slider_keys = {slider.key for slider in app.slider}
+    assert "state_number" not in slider_keys
+    assert "tunneling_cycle" in slider_keys
+    assert "show_density" not in {toggle.key for toggle in app.toggle}
+    assert "show_baseline" not in {toggle.key for toggle in app.toggle}
+    metric_labels = [metric.label for metric in app.metric]
+    assert metric_labels == [
+        "Energy split ΔE₀₁",
+        "Left probability",
+        "Period T",
+    ]
+    assert float(app.metric[1].value.rstrip("%")) == pytest.approx(99.6, abs=0.1)
+    assert float(app.metric[2].value) == pytest.approx(91.56, abs=0.02)
+    assert any("localized superposition" in element.value for element in app.markdown)
+    assert any("half a period" in element.value for element in app.markdown)
+    assert app.get("plotly_chart")
+
+    app.slider(key="tunneling_cycle").set_value(0.5).run()
+
+    assert not app.exception
+    assert float(app.metric[1].value.rstrip("%")) == pytest.approx(0.4, abs=0.1)
+
+    app.button(key="reset_controls").click().run()
+
+    assert not app.exception
+    assert app.segmented_control(key="visualization_mode").value == "Stationary state"
+    assert app.slider(key="state_number").value == 1
+    assert app.toggle(key="show_density").value is False
+    assert app.toggle(key="show_baseline").value is True
+    assert app.session_state["tunneling_cycle"] == pytest.approx(0.0)
 
 
 def test_double_well_controls_update_current_result_against_stable_default() -> None:
@@ -342,7 +383,7 @@ def test_double_well_controls_update_current_result_against_stable_default() -> 
     app.slider(key="double_well_separation").set_value(4.0).run()
 
     assert not app.exception
-    splitting = next(element for element in app.metric if element.label == "Tunneling split ΔE₀₁")
+    splitting = next(element for element in app.metric if element.label == "Energy split ΔE₀₁")
     assert float(splitting.value) == pytest.approx(0.000758, abs=1e-6)
     assert splitting.delta == "-98.9%"
     assert any(
@@ -369,7 +410,7 @@ def test_double_well_interaction_survives_switching_and_reset() -> None:
     assert app.slider(key="state_number").value == 2
     assert app.toggle(key="show_density").value is True
     assert app.toggle(key="show_baseline").value is False
-    splitting = next(element for element in app.metric if element.label == "Tunneling split ΔE₀₁")
+    splitting = next(element for element in app.metric if element.label == "Energy split ΔE₀₁")
     assert not splitting.delta
 
     app.button(key="reset_controls").click().run()

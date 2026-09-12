@@ -59,7 +59,7 @@ The core interaction is:
 - One or two bounded controls per experiment.
 - Coordinated potential, energy, wavefunction, and probability-density visualization.
 - Eigenstate selection and wavefunction/density toggle.
-- Reset behavior and double-well baseline comparison.
+- Reset behavior, double-well baseline comparison, and an interactive tunneling-cycle scrubber.
 - Concise physical explanation and expandable numerical details.
 - Deliberate desktop-first visual design.
 

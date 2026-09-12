@@ -17,7 +17,9 @@ methods, and software engineering.
 Open the [live app](https://quantum-playground-app.streamlit.app), choose **Symmetric double
 well**, and raise the barrier height or well separation. The lowest two energy levels move toward
 degeneracy as tunneling is suppressed. A fixed default comparison makes the collapsing energy split
-visible immediately, while expandable diagnostics show why the numerical result is trustworthy.
+visible immediately. Then switch to **Tunneling motion** and drag through one cycle to move a
+normalized probability density from one well to the other. Live left-well probability, the
+tunneling period, and expandable diagnostics connect the interaction to the underlying numerics.
 
 The complete two-minute path is:
 
@@ -29,8 +31,8 @@ The complete two-minute path is:
 | --- | --- |
 | Scientific computing | Sparse finite-difference Hamiltonians and shift-invert eigenvalue solving with NumPy and SciPy |
 | Numerical credibility | Analytic checks, eigenpair residuals, normalization, orthogonality, and measured second-order convergence |
-| Product engineering | Three curated experiments, bounded controls, responsive Plotly figures, keyboard-accessible Streamlit UI, and actionable failure states |
-| Software quality | Typed immutable models, read-only numerical results, 128 automated tests, frozen dependencies, and GitHub Actions |
+| Product engineering | Three curated experiments, a tunneling-cycle scrubber, responsive Plotly figures, keyboard-accessible Streamlit UI, and actionable failure states |
+| Software quality | Typed immutable models, read-only numerical results, a comprehensive automated test suite, frozen dependencies, and GitHub Actions |
 | Performance | Representative solver medians of 1.9–6.4 ms and hosted-style interaction medians near 60 ms on the recorded development machine |
 
 ## Experiments
@@ -39,8 +41,8 @@ The complete two-minute path is:
   convergence study.
 - **Harmonic oscillator:** change the confinement frequency and observe uniform level spacing and
   spatial contraction.
-- **Symmetric double well:** explore tunneling partners, parity, and the energy split between the
-  lowest even and odd states.
+- **Symmetric double well:** explore tunneling partners, parity, the lowest even/odd energy split,
+  and the time evolution of their localized superposition.
 
 Every experiment follows one numerical path:
 

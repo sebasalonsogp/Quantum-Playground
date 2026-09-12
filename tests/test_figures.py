@@ -4,7 +4,11 @@ import numpy as np
 import plotly.graph_objects as go
 import pytest
 
-from quantum_playground.figures import StateQuantity, build_stationary_state_figure
+from quantum_playground.figures import (
+    StateQuantity,
+    build_stationary_state_figure,
+    build_tunneling_motion_figure,
+)
 from quantum_playground.potentials import (
     create_double_well_config,
     create_harmonic_oscillator_config,
@@ -147,6 +151,76 @@ def test_double_well_figure_compares_potential_and_lowest_pair_with_reference() 
     assert figure.layout.meta["reference_splitting"] == pytest.approx(
         reference.energies[1] - reference.energies[0]
     )
+
+
+def test_tunneling_motion_scrubs_a_normalized_density_between_wells() -> None:
+    result = solve(create_double_well_config())
+
+    initial_figure = build_tunneling_motion_figure(result, cycle_position=0.0)
+    quarter_period_figure = build_tunneling_motion_figure(result, cycle_position=0.25)
+    half_period_figure = build_tunneling_motion_figure(result, cycle_position=0.5)
+    final_figure = build_tunneling_motion_figure(result, cycle_position=1.0)
+
+    assert isinstance(initial_figure, go.Figure)
+    assert not initial_figure.frames
+    assert not initial_figure.layout.updatemenus
+    assert not initial_figure.layout.sliders
+    assert initial_figure.data[0].name == "Localized probability density"
+    assert initial_figure.data[0].fill == "tozeroy"
+    assert initial_figure.layout.meta["energy_splitting"] == pytest.approx(
+        result.energies[1] - result.energies[0]
+    )
+    assert initial_figure.layout.meta["tunneling_period"] == pytest.approx(
+        2.0 * np.pi / (result.energies[1] - result.energies[0])
+    )
+    assert initial_figure.layout.meta["cycle_position"] == pytest.approx(0.0)
+    assert half_period_figure.layout.meta["cycle_position"] == pytest.approx(0.5)
+
+    initial_density = np.asarray(initial_figure.data[0].y)
+    quarter_period_density = np.asarray(quarter_period_figure.data[0].y)
+    half_period_density = np.asarray(half_period_figure.data[0].y)
+    final_density = np.asarray(final_figure.data[0].y)
+    for density in (
+        initial_density,
+        quarter_period_density,
+        half_period_density,
+        final_density,
+    ):
+        assert np.trapezoid(density, result.x) == pytest.approx(1.0, abs=2e-6)
+        assert np.all(density >= 0.0)
+    np.testing.assert_allclose(final_density, initial_density, atol=1e-12)
+
+    left = result.x <= 0.0
+    right = result.x >= 0.0
+    initial_left = np.trapezoid(initial_density[left], result.x[left])
+    initial_right = np.trapezoid(initial_density[right], result.x[right])
+    half_left = np.trapezoid(half_period_density[left], result.x[left])
+    half_right = np.trapezoid(half_period_density[right], result.x[right])
+    quarter_left = np.trapezoid(quarter_period_density[left], result.x[left])
+    quarter_right = np.trapezoid(quarter_period_density[right], result.x[right])
+    assert abs(initial_left - initial_right) > 0.8
+    assert quarter_left == pytest.approx(0.5, abs=2e-3)
+    assert quarter_right == pytest.approx(0.5, abs=2e-3)
+    assert initial_left == pytest.approx(half_right, abs=2e-3)
+    assert initial_right == pytest.approx(half_left, abs=2e-3)
+    assert initial_figure.layout.meta["left_probability"] == pytest.approx(initial_left)
+    assert initial_figure.layout.meta["right_probability"] == pytest.approx(initial_right)
+
+
+def test_tunneling_motion_requires_two_double_well_states() -> None:
+    harmonic = solve(create_harmonic_oscillator_config())
+    double_well = solve(create_double_well_config())
+    one_state_double_well = solve(create_double_well_config(eigenstate_count=1))
+
+    with pytest.raises(ValueError, match="double-well"):
+        build_tunneling_motion_figure(harmonic)
+
+    with pytest.raises(ValueError, match="at least two"):
+        build_tunneling_motion_figure(one_state_double_well)
+
+    for invalid_position in (-0.1, 1.1, float("nan"), True):
+        with pytest.raises(ValueError, match="cycle_position"):
+            build_tunneling_motion_figure(double_well, cycle_position=invalid_position)
 
 
 def test_reference_comparison_requires_two_compatible_double_well_states() -> None:

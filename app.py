@@ -3,7 +3,11 @@
 import streamlit as st
 
 from quantum_playground import __version__
-from quantum_playground.figures import StateQuantity, build_stationary_state_figure
+from quantum_playground.figures import (
+    StateQuantity,
+    build_stationary_state_figure,
+    build_tunneling_motion_figure,
+)
 from quantum_playground.models import ExperimentId, SimulationConfig, SimulationResult
 from quantum_playground.potentials import (
     BARRIER_HEIGHT,
@@ -41,6 +45,8 @@ _DEFAULT_CONTROLS = {
     "double_well_barrier_height": BARRIER_HEIGHT.default,
     "double_well_separation": WELL_SEPARATION.default,
     "show_baseline": True,
+    "visualization_mode": "Stationary state",
+    "tunneling_cycle": 0.0,
     "state_number": 1,
     "show_density": False,
 }
@@ -51,8 +57,11 @@ _DYNAMIC_CONTROL_KEYS = (
     "double_well_barrier_height",
     "double_well_separation",
     "show_baseline",
+    "visualization_mode",
 )
 _CONVERGENCE_GRID_POINTS = (201, 401, 801)
+_STATIONARY_VIEW = "Stationary state"
+_TUNNELING_VIEW = "Tunneling motion"
 
 
 def _saved_control_key(key: str) -> str:
@@ -73,7 +82,7 @@ def _reset_controls() -> None:
         st.session_state[_saved_control_key(key)] = default_value
         if key in st.session_state:
             st.session_state[key] = default_value
-    for key in ("state_number", "show_density"):
+    for key in ("state_number", "show_density", "tunneling_cycle"):
         st.session_state[key] = _DEFAULT_CONTROLS[key]
 
 
@@ -283,39 +292,74 @@ else:
 
 st.header(preset.title)
 st.markdown(f"{preset.description} **Try this:** {try_this}")
-st.markdown("**Explore this state**")
+is_tunneling_motion = False
+tunneling_cycle = 0.0
+if experiment is ExperimentId.DOUBLE_WELL:
+    st.markdown("**Choose how to explore**")
+    _load_dynamic_control("visualization_mode")
+    visualization_mode = st.segmented_control(
+        "Visualization",
+        (_STATIONARY_VIEW, _TUNNELING_VIEW),
+        key="visualization_mode",
+        help=(
+            "Inspect individual stationary states or scrub through a localized superposition "
+            "of the lowest even and odd states."
+        ),
+        on_change=_store_dynamic_control,
+        args=("visualization_mode",),
+    )
+    is_tunneling_motion = visualization_mode == _TUNNELING_VIEW
+else:
+    st.markdown("**Explore this state**")
 st.caption("Results update automatically when you change a control.")
 
-control_columns = st.columns((3, 2, 2), vertical_alignment="bottom")
-with control_columns[0]:
-    state_number = st.slider(
-        "Quantum state",
-        min_value=1,
-        max_value=preset.default_eigenstate_count,
-        step=1,
-        key="state_number",
-        help=state_help,
+if is_tunneling_motion:
+    state_number = 1
+    show_density = True
+    show_baseline = False
+    tunneling_cycle = st.slider(
+        "Tunneling cycle t/T",
+        min_value=0.0,
+        max_value=1.0,
+        step=0.025,
+        key="tunneling_cycle",
+        help=(
+            "0: localized in the starting well · ¼: balanced · ½: opposite well · "
+            "1: back to the start."
+        ),
     )
-with control_columns[1]:
-    show_density = st.toggle(
-        "Show probability density",
-        key="show_density",
-        help="Switch from the signed wavefunction ψ(x) to the measurable density |ψ(x)|².",
-        wrap=True,
-    )
-with control_columns[2]:
-    if experiment is ExperimentId.DOUBLE_WELL:
-        _load_dynamic_control("show_baseline")
-        show_baseline = st.toggle(
-            "Compare with default",
-            key="show_baseline",
-            help="Hold the default potential and lowest pair fixed behind the current result.",
-            on_change=_store_dynamic_control,
-            args=("show_baseline",),
+    st.caption("Drag through one full cycle: start → balanced → opposite well → return.")
+else:
+    control_columns = st.columns((3, 2, 2), vertical_alignment="bottom")
+    with control_columns[0]:
+        state_number = st.slider(
+            "Quantum state",
+            min_value=1,
+            max_value=preset.default_eigenstate_count,
+            step=1,
+            key="state_number",
+            help=state_help,
+        )
+    with control_columns[1]:
+        show_density = st.toggle(
+            "Show probability density",
+            key="show_density",
+            help="Switch from the signed wavefunction ψ(x) to the measurable density |ψ(x)|².",
             wrap=True,
         )
-    else:
-        show_baseline = False
+    with control_columns[2]:
+        if experiment is ExperimentId.DOUBLE_WELL:
+            _load_dynamic_control("show_baseline")
+            show_baseline = st.toggle(
+                "Compare with default",
+                key="show_baseline",
+                help="Hold the default potential and lowest pair fixed behind the current result.",
+                on_change=_store_dynamic_control,
+                args=("show_baseline",),
+                wrap=True,
+            )
+        else:
+            show_baseline = False
 
 st.subheader("Live result", icon=":material/insights:")
 result_slot = st.container()
@@ -344,6 +388,20 @@ report = _validate_result(result)
 diagnostic_checks = _diagnostic_checks(result, report)
 selected_index = int(state_number) - 1
 quantity = StateQuantity.PROBABILITY_DENSITY if show_density else StateQuantity.WAVEFUNCTION
+figure = (
+    build_tunneling_motion_figure(result, cycle_position=float(tunneling_cycle))
+    if is_tunneling_motion
+    else build_stationary_state_figure(
+        result,
+        state_index=selected_index,
+        quantity=quantity,
+        comparison_result=comparison_result,
+    )
+)
+if is_tunneling_motion:
+    tunneling_period = float(figure.layout.meta["tunneling_period"])
+    left_probability = float(figure.layout.meta["left_probability"])
+    right_probability = float(figure.layout.meta["right_probability"])
 
 with result_slot:
     if experiment is ExperimentId.DOUBLE_WELL:
@@ -354,10 +412,11 @@ with result_slot:
                 comparison_result.energies[1] - comparison_result.energies[0]
             )
             splitting_delta = f"{100.0 * (splitting / reference_splitting - 1.0):+.1f}%"
-        with st.container(horizontal=True, gap="small"):
+        metric_columns = st.columns(3)
+        with metric_columns[0]:
             st.metric(
-                "Tunneling split ΔE₀₁",
-                f"{splitting:.6f}",
+                "Energy split ΔE₀₁",
+                f"{splitting:.3g}",
                 delta=splitting_delta,
                 delta_color="off",
                 delta_arrow="off",
@@ -365,16 +424,34 @@ with result_slot:
                 help="Energy gap between the even ground state and odd first excited state.",
                 border=True,
             )
-            st.metric(
-                f"Selected energy E{state_number}",
-                f"{result.energies[selected_index]:.5f}",
-                border=True,
-            )
-            st.metric(
-                "Solve time",
-                f"{result.solve_time_seconds * 1_000:.0f} ms",
-                border=True,
-            )
+        if is_tunneling_motion:
+            with metric_columns[1]:
+                st.metric(
+                    "Left probability",
+                    f"{left_probability:.1%}",
+                    help="Integrated probability density on the left half of the domain.",
+                    border=True,
+                )
+            with metric_columns[2]:
+                st.metric(
+                    "Period T",
+                    f"{tunneling_period:.2f}",
+                    help="One complete left-to-right-to-left cycle in dimensionless time.",
+                    border=True,
+                )
+        else:
+            with metric_columns[1]:
+                st.metric(
+                    f"Selected energy E{state_number}",
+                    f"{result.energies[selected_index]:.5f}",
+                    border=True,
+                )
+            with metric_columns[2]:
+                st.metric(
+                    "Solve time",
+                    f"{result.solve_time_seconds * 1_000:.0f} ms",
+                    border=True,
+                )
     else:
         with st.container(horizontal=True, gap="small"):
             st.metric(
@@ -393,15 +470,9 @@ with result_slot:
                 border=True,
             )
 
-    figure = build_stationary_state_figure(
-        result,
-        state_index=selected_index,
-        quantity=quantity,
-        comparison_result=comparison_result,
-    )
     st.plotly_chart(
         figure,
-        key="stationary_state_figure",
+        key="tunneling_motion_figure" if is_tunneling_motion else "stationary_state_figure",
         width="stretch",
         theme=None,
         config={"displaylogo": False, "scrollZoom": False, "responsive": True},
@@ -415,10 +486,15 @@ with result_slot:
             f"on x ∈ [−6, 6] with V₀ = {double_well_barrier_height:.1f} and "
             f"d = {double_well_separation:.1f}"
         )
+    figure_note = (
+        "The cycle view shows the true normalized density of an equal two-state superposition."
+        if is_tunneling_motion
+        else "The upper state profile is display-scaled; the lower panel shows its true values."
+    )
     st.caption(
         f"Solved {result.config.eigenstate_count} states on "
-        f"{result.config.grid_points:,} grid points {simulation_summary}. The upper state profile "
-        "is display-scaled; the lower panel shows its true numerical values."
+        f"{result.config.grid_points:,} grid points {simulation_summary} in "
+        f"{result.solve_time_seconds * 1_000:.0f} ms. {figure_note}"
     )
     if comparison_result is not None:
         reference_splitting = float(comparison_result.energies[1] - comparison_result.energies[0])
@@ -452,12 +528,29 @@ with result_slot:
             icon=":material/error:",
         )
 
-explanation_title = (
-    "Reading the probability density" if show_density else "Reading the wavefunction"
-)
+if is_tunneling_motion:
+    explanation_title = "Why the particle tunnels"
+elif show_density:
+    explanation_title = "Reading the probability density"
+else:
+    explanation_title = "Reading the wavefunction"
 with st.container(border=True):
     st.subheader(explanation_title, icon=":material/lightbulb:")
-    if experiment is ExperimentId.INFINITE_WELL:
+    if is_tunneling_motion:
+        st.markdown(
+            "The cycle begins with a **localized superposition** of the lowest even and odd "
+            "stationary states. Their relative phase evolves at the energy splitting ΔE₀₁, moving "
+            "the probability density between the wells without changing its normalization."
+        )
+        st.markdown(
+            f"After **half a period** the density reaches the opposite well; after "
+            f"**T = 2π/ΔE₀₁ = {tunneling_period:.2f}** it returns to its starting side."
+        )
+        st.caption(
+            f"At t/T = {tunneling_cycle:.3f}: left {left_probability:.1%} · "
+            f"right {right_probability:.1%}."
+        )
+    elif experiment is ExperimentId.INFINITE_WELL:
         st.markdown(
             f"State **n = {state_number}** has **{state_number - 1} internal nodes**. Its energy "
             "is proportional to **n²**, so higher states spread farther apart on the energy axis."
@@ -476,16 +569,17 @@ with st.container(border=True):
             f"states form a tunneling pair with **ΔE₀₁ = {splitting:.6f}**; a smaller split means "
             "the particle exchanges between the wells more slowly."
         )
-    if show_density:
-        st.markdown(
-            "The probability density is never negative. Peaks mark positions where the particle "
-            "is more likely to be found; nodes remain positions of zero probability."
-        )
-    else:
-        st.markdown(
-            "The wavefunction changes sign between nodes. That sign carries phase information, "
-            "while the squared magnitude determines measurement probability."
-        )
+    if not is_tunneling_motion:
+        if show_density:
+            st.markdown(
+                "The probability density is never negative. Peaks mark positions where the "
+                "particle is more likely to be found; nodes remain positions of zero probability."
+            )
+        else:
+            st.markdown(
+                "The wavefunction changes sign between nodes. That sign carries phase information, "
+                "while the squared magnitude determines measurement probability."
+            )
 
 with st.expander("Numerical details", icon=":material/functions:"):
     st.markdown("**Method and discretization**")

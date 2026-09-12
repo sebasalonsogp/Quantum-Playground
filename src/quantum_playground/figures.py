@@ -1,7 +1,7 @@
-"""Pure Plotly figure builders for stationary-state results."""
+"""Pure Plotly figure builders for quantum-simulation results."""
 
 from enum import StrEnum
-from numbers import Integral
+from numbers import Integral, Real
 
 import numpy as np
 import plotly.graph_objects as go
@@ -390,4 +390,219 @@ def build_stationary_state_figure(
     return figure
 
 
-__all__ = ["StateQuantity", "build_stationary_state_figure"]
+def _tunneling_title(cycle_position: float, left: float, right: float) -> str:
+    return f"Tunneling · t/T {cycle_position:.2f} · L {left:.1%} · R {right:.1%}"
+
+
+def _tunneling_snapshot(
+    result: SimulationResult,
+    cycle_position: object,
+) -> tuple[FloatArray, float, float, float, float, float]:
+    if not isinstance(result, SimulationResult):
+        raise ValueError("result must be a SimulationResult")
+    if result.config.experiment is not ExperimentId.DOUBLE_WELL:
+        raise ValueError("tunneling motion requires a double-well result")
+    if result.config.eigenstate_count < 2:
+        raise ValueError("tunneling motion requires at least two states")
+    if isinstance(cycle_position, bool) or not isinstance(cycle_position, Real):
+        raise ValueError("cycle_position must be a finite number from 0 to 1")
+    cycle_position = float(cycle_position)
+    if not np.isfinite(cycle_position) or not 0.0 <= cycle_position <= 1.0:
+        raise ValueError("cycle_position must be a finite number from 0 to 1")
+
+    splitting = float(result.energies[1] - result.energies[0])
+    if not np.isfinite(splitting) or splitting <= 0.0:
+        raise ValueError("the lowest double-well pair must have a positive energy splitting")
+
+    even_state = result.wavefunctions[0]
+    odd_state = result.wavefunctions[1]
+    stationary_density = 0.5 * (even_state**2 + odd_state**2)
+    density = stationary_density + np.cos(2.0 * np.pi * cycle_position) * even_state * odd_state
+    density = np.maximum(density, 0.0)
+    normalization = float(np.trapezoid(density, result.x))
+    if not np.isfinite(normalization) or normalization <= 0.0:
+        raise ValueError("tunneling motion produced an invalid probability density")
+    density /= normalization
+
+    left_mask = result.x <= 0.0
+    right_mask = result.x >= 0.0
+    left_probability = float(np.trapezoid(density[left_mask], result.x[left_mask]))
+    right_probability = float(np.trapezoid(density[right_mask], result.x[right_mask]))
+    tunneling_period = 2.0 * np.pi / splitting
+    density_ceiling = float(np.max(stationary_density + np.abs(even_state * odd_state)))
+    return (
+        density,
+        left_probability,
+        right_probability,
+        splitting,
+        tunneling_period,
+        density_ceiling,
+    )
+
+
+def _add_tunneling_traces(
+    figure: go.Figure,
+    result: SimulationResult,
+    density: FloatArray,
+) -> None:
+    figure.add_trace(
+        go.Scatter(
+            x=result.x,
+            y=density,
+            mode="lines",
+            name="Localized probability density",
+            line={"color": _DENSITY, "width": 3.0},
+            fill="tozeroy",
+            fillcolor="rgba(244, 114, 182, 0.20)",
+            hovertemplate="x = %{x:.4g}<br>|Ψ(x,t)|² = %{y:.6g}<extra></extra>",
+        ),
+        row=2,
+        col=1,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=result.x,
+            y=result.potential,
+            mode="lines",
+            name="Potential V(x)",
+            line={"color": _POTENTIAL, "width": 2.8},
+            hovertemplate="x = %{x:.4g}<br>V(x) = %{y:.6g}<extra>Potential</extra>",
+        ),
+        row=1,
+        col=1,
+    )
+    lower, upper = result.config.domain
+    for state_index, (color, dash) in enumerate(
+        ((_SELECTED_ENERGY, "solid"), (_WAVEFUNCTION, "dash"))
+    ):
+        energy = float(result.energies[state_index])
+        state_number = state_index + 1
+        figure.add_trace(
+            go.Scatter(
+                x=(lower, upper),
+                y=(energy, energy),
+                mode="lines",
+                name=f"E{state_number} · {'even' if state_index == 0 else 'odd'}",
+                line={"color": color, "dash": dash, "width": 2.2},
+                hovertemplate=f"E{state_number} = %{{y:.6g}}<extra>Stationary state</extra>",
+            ),
+            row=1,
+            col=1,
+        )
+
+
+def build_tunneling_motion_figure(
+    result: SimulationResult,
+    *,
+    cycle_position: float = 0.0,
+) -> go.Figure:
+    """Visualize one phase of a localized state built from the lowest double-well pair.
+
+    The cycle is an exact two-state evolution within the computed stationary-state basis:
+    ``Psi(x,t) = (psi_0 exp(-i E_0 t) + psi_1 exp(-i E_1 t)) / sqrt(2)``.
+    Dimensionless units use ``hbar = 1``, so one tunneling cycle is ``T = 2 pi / Delta E``.
+    """
+
+    (
+        density,
+        left_probability,
+        right_probability,
+        splitting,
+        tunneling_period,
+        density_ceiling,
+    ) = _tunneling_snapshot(result, cycle_position)
+
+    figure = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        row_heights=(0.45, 0.55),
+        vertical_spacing=0.14,
+        subplot_titles=("Lowest stationary pair", "Localized probability density"),
+    )
+    _add_tunneling_traces(figure, result, density)
+
+    _add_domain_boundaries(figure, result)
+    figure.add_vline(
+        x=0.0,
+        line={"color": _MUTED, "dash": "dot", "width": 1.2},
+        layer="below",
+        row=2,
+        col=1,
+    )
+
+    energy_min = min(float(np.min(result.potential)), float(result.energies[0]))
+    energy_span = max(float(result.energies[1]) - energy_min, 1.0)
+    figure.update_layout(
+        autosize=True,
+        height=720,
+        paper_bgcolor=_BACKGROUND,
+        plot_bgcolor=_BACKGROUND,
+        font={"color": _TEXT, "family": "Inter, ui-sans-serif, system-ui, sans-serif"},
+        title={
+            "text": _tunneling_title(
+                float(cycle_position),
+                left_probability,
+                right_probability,
+            ),
+            "x": 0.0,
+            "xanchor": "left",
+            "y": 0.98,
+            "yanchor": "top",
+        },
+        legend={
+            "orientation": "h",
+            "x": 1.0,
+            "xanchor": "right",
+            "y": 1.12,
+            "yanchor": "bottom",
+            "bgcolor": "rgba(0, 0, 0, 0)",
+            "font": {"size": 11},
+        },
+        margin={"l": 72, "r": 48, "t": 132, "b": 64},
+        hovermode="closest",
+        meta={
+            "energy_splitting": splitting,
+            "tunneling_period": tunneling_period,
+            "cycle_position": float(cycle_position),
+            "left_probability": left_probability,
+            "right_probability": right_probability,
+        },
+    )
+    figure.update_xaxes(
+        range=list(result.config.domain),
+        showgrid=False,
+        zeroline=False,
+        showline=True,
+        linecolor=_MUTED,
+        automargin=True,
+    )
+    figure.update_yaxes(
+        showgrid=True,
+        gridcolor=_GRID,
+        zeroline=False,
+        showline=True,
+        linecolor=_MUTED,
+        automargin=True,
+    )
+    figure.update_yaxes(
+        title_text="Energy E",
+        range=(energy_min - 0.08 * energy_span, float(result.energies[1]) + 0.2 * energy_span),
+        row=1,
+        col=1,
+    )
+    figure.update_xaxes(title_text="Position x", row=2, col=1)
+    figure.update_yaxes(
+        title_text="Probability density |Ψ(x,t)|²",
+        range=(0.0, 1.08 * density_ceiling),
+        row=2,
+        col=1,
+    )
+    return figure
+
+
+__all__ = [
+    "StateQuantity",
+    "build_stationary_state_figure",
+    "build_tunneling_motion_figure",
+]

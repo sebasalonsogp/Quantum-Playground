@@ -173,8 +173,9 @@ is justified only if that escape hatch proves insufficient.
 
 `figures.py` builds Plotly figures without calling Streamlit. Prefer one coordinated figure so the
 potential, energy levels, wavefunctions, and probability densities share axes and visual language.
-Client-side Plotly frames may animate precomputed states; repeated server-side solves should not be
-used as a high-frame-rate animation loop.
+For the double-well tunneling cycle, Streamlit owns one bounded `t/T` scrubber and the pure figure
+builder computes a normalized snapshot from the lowest even/odd pair. The cached eigensolve is
+reused as the user moves the control, so this adds no custom JavaScript or high-frame-rate solve loop.
 
 The double-well view may pass a second immutable `SimulationResult` into the same figure builder as
 comparison context. That result is always the cached default preset: its potential and two lowest
@@ -231,7 +232,6 @@ Never:
 - [Streamlit fragments](https://docs.streamlit.io/develop/api-reference/execution-flow/st.fragment)
 - [Streamlit Components v2](https://docs.streamlit.io/develop/concepts/custom-components/components-v2)
 - [Plotly subplots](https://plotly.com/python/subplots/)
-- [Plotly animations](https://plotly.com/python/animations/)
 - [SciPy sparse eigensolver](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigsh.html)
 - [MIT infinite-square-well derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2016/resources/mit8_04s16_lecnotes11/)
 - [MIT quantum-harmonic-oscillator derivation](https://ocw.mit.edu/courses/8-04-quantum-physics-i-spring-2013/resources/mit8_04s13_lec08/)

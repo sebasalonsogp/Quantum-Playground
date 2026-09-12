@@ -2,6 +2,13 @@
 
 All notable user-facing changes to Quantum Playground are recorded here.
 
+## Unreleased
+
+### Added
+
+- An interactive double-well tunneling cycle that moves a normalized two-state probability density
+  between the wells and reports its live left-well probability and tunneling period.
+
 ## [0.1.0] - 2026-09-11
 
 ### Added

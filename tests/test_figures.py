@@ -6,6 +6,7 @@ import pytest
 
 from quantum_playground.figures import StateQuantity, build_stationary_state_figure
 from quantum_playground.potentials import (
+    create_double_well_config,
     create_harmonic_oscillator_config,
     create_infinite_well_config,
 )
@@ -78,7 +79,7 @@ def test_energy_panel_marks_display_scaling_and_preserves_selected_energy(well_r
     overlay = figure.data[-2]
     selected_energy = well_result.energies[state_index]
 
-    assert "display-scaled" in overlay.name
+    assert "scaled" in overlay.name
     assert np.min(overlay.y) < selected_energy < np.max(overlay.y)
     assert "display-scaled" in overlay.hovertemplate
     assert figure.layout.meta["selected_energy"] == pytest.approx(selected_energy)
@@ -104,6 +105,50 @@ def test_harmonic_figure_keeps_energy_ladder_legible_without_clipping_data() -> 
     assert figure.layout.yaxis.range[1] < float(np.max(result.potential))
     assert figure.layout.yaxis.range[1] > float(np.max(result.energies))
     assert figure.layout.yaxis.range[1] > float(np.max(figure.data[-2].y))
+
+
+def test_double_well_figure_compares_potential_and_lowest_pair_with_reference() -> None:
+    current = solve(
+        create_double_well_config(
+            barrier_height=8.0,
+            well_separation=4.0,
+        )
+    )
+    reference = solve(create_double_well_config())
+
+    figure = build_stationary_state_figure(
+        current,
+        comparison_result=reference,
+    )
+
+    reference_potential = next(trace for trace in figure.data if trace.name == "Reference V(x)")
+    reference_levels = [
+        trace for trace in figure.data if trace.legendgroup == "reference-lowest-pair"
+    ]
+    np.testing.assert_array_equal(reference_potential.x, reference.x)
+    np.testing.assert_array_equal(reference_potential.y, reference.potential)
+    assert reference_potential.line.dash == "dash"
+    assert len(reference_levels) == 2
+    np.testing.assert_allclose(reference_levels[0].y, reference.energies[0])
+    np.testing.assert_allclose(reference_levels[1].y, reference.energies[1])
+    assert figure.layout.meta["reference_splitting"] == pytest.approx(
+        reference.energies[1] - reference.energies[0]
+    )
+
+
+def test_reference_comparison_requires_two_compatible_double_well_states() -> None:
+    double_well = solve(create_double_well_config())
+    harmonic = solve(create_harmonic_oscillator_config())
+    one_state_double_well = solve(create_double_well_config(eigenstate_count=1))
+
+    with pytest.raises(ValueError, match="double-well"):
+        build_stationary_state_figure(double_well, comparison_result=harmonic)
+
+    with pytest.raises(ValueError, match="at least two"):
+        build_stationary_state_figure(double_well, comparison_result=one_state_double_well)
+
+    with pytest.raises(ValueError, match="at least two"):
+        build_stationary_state_figure(one_state_double_well, comparison_result=double_well)
 
 
 def test_figure_structure_is_deterministic(well_result) -> None:

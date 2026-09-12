@@ -7,7 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from quantum_playground.models import FloatArray, SimulationResult
+from quantum_playground.models import ExperimentId, FloatArray, SimulationResult
 
 _BACKGROUND = "#07111F"
 _TEXT = "#E2E8F0"
@@ -18,6 +18,8 @@ _SELECTED_ENERGY = "#FBBF24"
 _OTHER_ENERGY = "rgba(148, 163, 184, 0.62)"
 _WAVEFUNCTION = "#A78BFA"
 _DENSITY = "#F472B6"
+_REFERENCE = "rgba(148, 163, 184, 0.58)"
+_REFERENCE_POTENTIAL = "rgba(34, 211, 238, 0.42)"
 
 
 class StateQuantity(StrEnum):
@@ -84,6 +86,66 @@ def _energy_scaled_profile(
     return selected_energy + profile * scale
 
 
+def _validate_comparison_result(
+    result: SimulationResult,
+    comparison_result: SimulationResult | None,
+) -> SimulationResult | None:
+    if comparison_result is None:
+        return None
+    if not isinstance(comparison_result, SimulationResult):
+        raise ValueError("comparison_result must be a SimulationResult")
+    if (
+        result.config.experiment is not ExperimentId.DOUBLE_WELL
+        or comparison_result.config.experiment is not ExperimentId.DOUBLE_WELL
+    ):
+        raise ValueError("reference comparison requires double-well results")
+    if result.config.eigenstate_count < 2 or comparison_result.config.eigenstate_count < 2:
+        raise ValueError("reference comparison requires at least two states in each result")
+    if not np.allclose(
+        result.config.domain,
+        comparison_result.config.domain,
+        rtol=1e-12,
+        atol=1e-12,
+    ):
+        raise ValueError("reference comparison requires matching domains")
+    return comparison_result
+
+
+def _add_reference_context(figure: go.Figure, reference: SimulationResult) -> None:
+    figure.add_trace(
+        go.Scatter(
+            x=reference.x,
+            y=reference.potential,
+            mode="lines",
+            name="Reference V(x)",
+            line={"color": _REFERENCE_POTENTIAL, "dash": "dash", "width": 1.8},
+            hovertemplate="x = %{x:.4g}<br>Reference V(x) = %{y:.6g}<extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
+    lower, upper = reference.config.domain
+    for state_index in (0, 1):
+        state_number = state_index + 1
+        energy = float(reference.energies[state_index])
+        figure.add_trace(
+            go.Scatter(
+                x=(lower, upper),
+                y=(energy, energy),
+                mode="lines",
+                name="Reference E1/E2" if state_index == 0 else "Reference E2",
+                legendgroup="reference-lowest-pair",
+                showlegend=state_index == 0,
+                line={"color": _REFERENCE, "dash": "dot", "width": 1.6},
+                hovertemplate=(
+                    f"Reference E{state_number} = %{{y:.6g}}<extra>Default baseline</extra>"
+                ),
+            ),
+            row=1,
+            col=1,
+        )
+
+
 def _add_energy_levels(
     figure: go.Figure,
     result: SimulationResult,
@@ -98,7 +160,7 @@ def _add_energy_levels(
             name = f"Selected E{state_number}"
             showlegend = True
         elif not unselected_legend_added:
-            name = "Other energy levels"
+            name = "Other levels"
             showlegend = True
             unselected_legend_added = True
         else:
@@ -155,6 +217,7 @@ def build_stationary_state_figure(
     *,
     state_index: int = 0,
     quantity: StateQuantity = StateQuantity.WAVEFUNCTION,
+    comparison_result: SimulationResult | None = None,
 ) -> go.Figure:
     """Build a coordinated energy landscape and selected-state profile.
 
@@ -165,6 +228,7 @@ def build_stationary_state_figure(
     """
 
     state_index, quantity = _validate_selection(result, state_index, quantity)
+    comparison_result = _validate_comparison_result(result, comparison_result)
     state_number = state_index + 1
     selected_energy = float(result.energies[state_index])
     profile, profile_name, axis_title, profile_color, fill = _profile_values(
@@ -182,6 +246,8 @@ def build_stationary_state_figure(
         vertical_spacing=0.13,
         subplot_titles=(None, f"Displayed state {state_number} · true numerical profile"),
     )
+    if comparison_result is not None:
+        _add_reference_context(figure, comparison_result)
     figure.add_trace(
         go.Scatter(
             x=result.x,
@@ -201,7 +267,7 @@ def build_stationary_state_figure(
             y=scaled_profile,
             customdata=profile,
             mode="lines",
-            name=f"{profile_name}, display-scaled",
+            name=f"{profile_name}, scaled",
             line={"color": profile_color, "width": 2.6},
             hovertemplate=(
                 "x = %{x:.4g}<br>Actual value = %{customdata:.6g}"
@@ -236,14 +302,26 @@ def build_stationary_state_figure(
         col=1,
     )
 
-    energy_min = float(
-        min(
-            np.min(result.potential),
-            np.min(result.energies),
-            np.min(scaled_profile),
+    energy_bounds = [
+        float(np.min(result.potential)),
+        float(np.min(result.energies)),
+        float(np.min(scaled_profile)),
+        float(np.max(result.energies)),
+        float(np.max(scaled_profile)),
+    ]
+    metadata = {
+        "state_index": state_index,
+        "state_number": state_number,
+        "quantity": quantity.value,
+        "selected_energy": selected_energy,
+    }
+    if comparison_result is not None:
+        energy_bounds.extend(float(energy) for energy in comparison_result.energies[:2])
+        metadata["reference_splitting"] = float(
+            comparison_result.energies[1] - comparison_result.energies[0]
         )
-    )
-    energy_max = float(max(np.max(result.energies), np.max(scaled_profile)))
+    energy_min = min(energy_bounds)
+    energy_max = max(energy_bounds)
     energy_span = max(energy_max - energy_min, 1.0)
     energy_padding = 0.08 * energy_span
     profile_max = float(np.max(np.abs(profile)))
@@ -262,23 +340,26 @@ def build_stationary_state_figure(
             "text": f"Energy landscape · displayed state {state_number}",
             "x": 0.0,
             "xanchor": "left",
+            "y": 0.83 if comparison_result is not None else 0.88,
+            "yanchor": "top",
         },
         legend={
             "orientation": "h",
             "x": 1.0,
             "xanchor": "right",
-            "y": 1.08,
+            "y": 1.16 if comparison_result is not None else 1.11,
             "yanchor": "bottom",
             "bgcolor": "rgba(0, 0, 0, 0)",
+            "font": {"size": 11},
         },
-        margin={"l": 72, "r": 64, "t": 104, "b": 56},
+        margin={
+            "l": 72,
+            "r": 64,
+            "t": 146 if comparison_result is not None else 120,
+            "b": 56,
+        },
         hovermode="closest",
-        meta={
-            "state_index": state_index,
-            "state_number": state_number,
-            "quantity": quantity.value,
-            "selected_energy": selected_energy,
-        },
+        meta=metadata,
     )
     figure.update_xaxes(
         range=list(result.config.domain),

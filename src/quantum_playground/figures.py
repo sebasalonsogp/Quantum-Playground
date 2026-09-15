@@ -20,6 +20,7 @@ _WAVEFUNCTION = "#A78BFA"
 _DENSITY = "#F472B6"
 _REFERENCE = "rgba(148, 163, 184, 0.58)"
 _REFERENCE_POTENTIAL = "rgba(34, 211, 238, 0.42)"
+_CHART_FONT_FAMILY = "IBM Plex Sans, Segoe UI, sans-serif"
 _SUBSCRIPT_TRANSLATION = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 
 
@@ -344,7 +345,7 @@ def build_stationary_state_figure(
         height=720,
         paper_bgcolor=_BACKGROUND,
         plot_bgcolor=_BACKGROUND,
-        font={"color": _TEXT, "family": "Inter, ui-sans-serif, system-ui, sans-serif"},
+        font={"color": _TEXT, "family": _CHART_FONT_FAMILY},
         title={
             "text": f"Energy landscape · displayed state {state_number}",
             "x": 0.0,
@@ -548,7 +549,7 @@ def build_tunneling_motion_figure(
         height=720,
         paper_bgcolor=_BACKGROUND,
         plot_bgcolor=_BACKGROUND,
-        font={"color": _TEXT, "family": "Inter, ui-sans-serif, system-ui, sans-serif"},
+        font={"color": _TEXT, "family": _CHART_FONT_FAMILY},
         title={
             "text": _tunneling_title(
                 float(cycle_position),

@@ -8,12 +8,22 @@ linkColor = "#67E8F9"
 borderColor = "#64748B"
 dataframeBorderColor = "#64748B"
 dataframeHeaderBackgroundColor = "#101C2E"
+font = "'IBM Plex Sans':https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+headingFont = "'IBM Plex Serif':https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&display=swap"
+codeFont = "'IBM Plex Mono':https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+baseFontSize = 16
+baseFontWeight = 400
+codeFontSize = "0.875rem"
+codeFontWeight = 400
+metricValueFontSize = "2rem"
+metricValueFontWeight = 500
+linkUnderline = false
 baseRadius = "0.5rem"
 buttonRadius = "0.4rem"
 showWidgetBorder = true
 showSidebarBorder = true
-headingFontSizes = ["2.4rem", "1.8rem", "1.3rem", "1.1rem", "1rem", "0.9rem"]
-headingFontWeights = [700, 650, 600, 600, 600, 600]
+headingFontSizes = ["2.65rem", "1.85rem", "1.3rem", "1.1rem", "1rem", "0.9rem"]
+headingFontWeights = [600, 600, 500, 500, 500, 500]
 chartCategoricalColors = ["#8B5CF6", "#22D3EE", "#F472B6", "#FBBF24", "#34D399"]
 
 [browser]

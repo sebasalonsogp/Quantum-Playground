@@ -49,6 +49,7 @@ def test_figure_uses_responsive_margins_and_readable_axis_labels(well_result) ->
 
     assert figure.layout.autosize is True
     assert figure.layout.dragmode is False
+    assert figure.layout.font.family == "IBM Plex Sans, Segoe UI, sans-serif"
     assert figure.layout.xaxis.automargin is True
     assert figure.layout.xaxis2.automargin is True
     assert figure.layout.yaxis.automargin is True
@@ -164,6 +165,7 @@ def test_tunneling_motion_scrubs_a_normalized_density_between_wells() -> None:
 
     assert isinstance(initial_figure, go.Figure)
     assert initial_figure.layout.dragmode is False
+    assert initial_figure.layout.font.family == "IBM Plex Sans, Segoe UI, sans-serif"
     assert not initial_figure.frames
     assert not initial_figure.layout.updatemenus
     assert not initial_figure.layout.sliders
